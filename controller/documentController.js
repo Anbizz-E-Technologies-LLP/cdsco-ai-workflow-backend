@@ -57,14 +57,21 @@ exports.uploadDocument = async (req, res) => {
 
     // ✅ TEXT EXTRACTION
     if (fileType === "pdf") {
-      const parsed = await pdfParse(req.file.buffer);
-      extractedText = parsed.text || "";
-      pageCount = parsed.numpages || 1;
-    } else if (fileType === "txt") {
-      extractedText = req.file.buffer.toString("utf8");
-    } else {
-      extractedText = "[DOCX parsing not implemented]";
-    }
+  try {
+    const parsed = await pdfParse(req.file.buffer);
+
+    extractedText = parsed.text || "";
+    pageCount = parsed.numpages || 1;
+
+  } catch (err) {
+    console.error("❌ PDF Parse Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: "PDF parsing failed",
+    });
+  }
+}
 
     const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
 

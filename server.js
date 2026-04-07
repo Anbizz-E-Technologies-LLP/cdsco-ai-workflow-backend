@@ -36,7 +36,7 @@ app.use((req, res, next) => {
 
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://cdsco-ai-workflow.anbizz.com/',
+  'https://cdsco-ai-workflow.anbizz.com',
   process.env.CLIENT_URL,
 ].filter(Boolean)
 
