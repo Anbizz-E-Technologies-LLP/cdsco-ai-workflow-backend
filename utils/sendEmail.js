@@ -11,7 +11,6 @@ const transporter = nodemailer.createTransport({
 });
  
 const sendWelcomeEmail = async ({ name, email, role, verificationToken, tempPassword }) => {
-  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
   const roleLabels = {
     admin: "Administrator",
@@ -75,8 +74,7 @@ const sendWelcomeEmail = async ({ name, email, role, verificationToken, tempPass
             Please verify your email address and log in to set a new password.
             This verification link expires in <strong>24 hours</strong>.
           </p>
-          <a href="${verifyUrl}" class="btn">Verify Email & Activate Account</a>
-          <div class="warning">
+           <div class="warning">
             ⚠️ Please change your password immediately after your first login. Do not share your credentials with anyone.
           </div>
         </div>
