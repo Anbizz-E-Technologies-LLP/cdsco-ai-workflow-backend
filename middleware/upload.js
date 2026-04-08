@@ -5,13 +5,13 @@ const path = require("path");
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowed = [".pdf", ".txt", ".docx", ".png", ".jpg", ".jpeg", ".webp", ".gif"];
+  const allowed = [".pdf", ".txt", ".docx", ".png", ".jpg", ".jpeg", ".webp"];
   const ext = path.extname(file.originalname).toLowerCase();
 
   if (allowed.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF, TXT, DOCX, PNG, JPG, JPEG, WEBP, GIF files are allowed"), false);
+    cb(new Error("Only PDF, TXT, DOCX, PNG, JPG, JPEG, WEBP files are allowed"), false);
   }
 };
 
