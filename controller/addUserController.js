@@ -1,8 +1,8 @@
-const crypto                        = require("crypto");
-const bcrypt                        = require("bcryptjs");
-const User                          = require("../models/User");
-const { generateAccessToken }       = require("../middleware/generateAccessToken");
-const { sendWelcomeEmail }          = require("../utils/sendEmail");
+const crypto = require("crypto");
+const bcrypt  = require("bcryptjs");
+const User = require("../model/addUserModel");
+const { generateAccessToken } = require("../middleware/generateAccessToken");
+const { sendWelcomeEmail } = require("../utils/sendEmail");
 
 
 const generateTempPassword = () => crypto.randomBytes(8).toString("hex");
