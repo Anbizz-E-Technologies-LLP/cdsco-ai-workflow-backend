@@ -4,6 +4,7 @@ const cors = require('cors')
 require('dotenv').config()
 
 const documentRoutes = require('./routes/documentRoute')
+// const authRoutes = require('./routes/authRoute')
 
 const app = express()
 
@@ -15,5 +16,6 @@ mongoose.connect(process.env.MONGO_URI).then(() => console.log('✅ MongoDB OK')
 
 app.get('/', (req, res) => res.send('Welcome to the Document Management API'))
 app.use('/api/documents', documentRoutes)
+// app.use('/api/auth', authRoutes)
 
 app.listen(5000, () => console.log('🚀 Server: http://localhost:5000'))
