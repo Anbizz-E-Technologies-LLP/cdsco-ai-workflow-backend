@@ -1,57 +1,129 @@
 const crypto = require("crypto");
 const bcrypt  = require("bcryptjs");
 const User = require("../model/addUserModel");
-const { generateAccessToken } = require("../middleware/generateAccessToken");
+const { generateTempPassword, generateVerificationToken, generateAccessToken } = require("../middleware/generateAccessToken");
 const { sendWelcomeEmail } = require("../utils/sendEmail");
-
-
-const generateTempPassword = () => crypto.randomBytes(8).toString("hex");
 
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, password } = req.body; // ← add password
 
-    const existing = await User.findOne({ email });
+    // ── 1. Validation ──────────────────────────────────────────────────────
+    if (!name || !email || !role || !password) {
+      return res.status(400).json({ success: false, message: "Name, email, role and password are required." });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, message: "Invalid email format." });
+    }
+
+    const allowedRoles = ["admin", "reviewer", "analyst"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ success: false, message: "Role must be one of: admin, reviewer, analyst." });
+    }
+
+    // ── 2. Duplicate check ─────────────────────────────────────────────────
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) {
       return res.status(409).json({ success: false, message: "A user with this email already exists." });
     }
 
-    const tempPassword              = generateTempPassword();
-    const { rawToken, hashedToken } = generateAccessToken();
+    // ── 3. Hash the admin-provided password ────────────────────────────────
+    const hashedPassword = await bcrypt.hash(password, 12); // ← use password from body
 
-    // ── Hash the temp password before saving ──────────────────────────────────
-    const hashedPassword = await bcrypt.hash(tempPassword, 12);
-
+    // ── 4. Persist user ────────────────────────────────────────────────────
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword, 
+      name:            name.trim(),
+      email:           email.toLowerCase().trim(),
+      password:        hashedPassword,
       role,
-      createdBy: req.user._id,
-      verificationToken: hashedToken,
-      isEmailVerified: false,
-      isActive: true,
+      isActive:        true,
     });
 
-    // Send plain tempPassword in email so user can login with it
-    await sendWelcomeEmail({ name, email, role, verificationToken: rawToken, tempPassword });
+    // ── 5. Access token ────────────────────────────────────────────────────
+    const accessToken = generateAccessToken(user);
 
+    // ── 6. Send email with the plain password admin typed ──────────────────
+    try {
+      await sendWelcomeEmail({ name, email, role, tempPassword: password }); // ← plain password
+    } catch (emailErr) {
+      console.error("Welcome email failed:", emailErr.message);
+    }
+
+    // ── 7. Respond ─────────────────────────────────────────────────────────
     return res.status(201).json({
       success: true,
       message: `User created successfully. Welcome email sent to ${email}.`,
+      accessToken,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        isEmailVerified: user.isEmailVerified,
-        createdAt: user.createdAt,
+        id:              user._id,
+        name:            user.name,
+        email:           user.email,
+        role:            user.role,
+        isActive:        user.isActive,
+        createdAt:       user.createdAt,
       },
     });
+
   } catch (err) {
+    console.error("createUser error:", err);
     return res.status(500).json({ success: false, message: "Failed to create user.", error: err.message });
+  }
+};
+
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // ── 1. Validation ──────────────────────────────────────────────────────
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+
+    // ── 2. Find user (include password field since select:false) ───────────
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    }
+
+    // ── 3. Check active status ─────────────────────────────────────────────
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: "Your account has been deactivated. Contact your administrator." });
+    }
+
+    // ── 4. Compare password ────────────────────────────────────────────────
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    }
+
+    // ── 5. Update last login ───────────────────────────────────────────────
+    user.lastLogin = new Date();
+    await user.save();
+
+    // ── 6. Generate token ──────────────────────────────────────────────────
+    const accessToken = generateAccessToken(user);
+
+    // ── 7. Respond ─────────────────────────────────────────────────────────
+    return res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      accessToken,
+      user: {
+        id:        user._id,
+        name:      user.name,
+        email:     user.email,
+        role:      user.role,
+        isActive:  user.isActive,
+        lastLogin: user.lastLogin,
+      },
+    });
+
+  } catch (err) {
+    console.error("login error:", err);
+    return res.status(500).json({ success: false, message: "Login failed.", error: err.message });
   }
 };
 
@@ -149,4 +221,4 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser };
+module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser, login };

@@ -1,4 +1,5 @@
-const jwt = require('jsonwebtoken');
+const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 
 const verifyAccessToken = (token) => {
   const secret = process.env.ACCESS_TOKEN_SECRET;
@@ -8,20 +9,28 @@ const verifyAccessToken = (token) => {
   return jwt.verify(token, secret);
 };
 
-const generateAccessToken = (user) => {
-  const secret = process.env.ACCESS_TOKEN_SECRET;
-
-  if (!secret) throw new Error("ACCESS_TOKEN_SECRET is missing");
-
-  const payload = {
-    username: user.username,
-    status: user.status,
-    role: user.role,
-    permissions: getPermissions(user.role)
-  };
-
-  return jwt.sign(payload, secret, { expiresIn: "7d" });
+// const generateTempPassword = () => crypto.randomBytes(8).toString("hex");
+const generateTempPassword = () => {
+  const words   = ["Blue", "Red", "Sky", "Sun", "Moon", "Star", "Fire", "Wind", "Rock", "Gold"];
+  const symbols = ["@", "#", "!", "$", "%"];
+  const word    = words[Math.floor(Math.random() * words.length)];
+  const symbol  = symbols[Math.floor(Math.random() * symbols.length)];
+  const number  = Math.floor(1000 + Math.random() * 9000); // 4-digit number
+  return `${word}${symbol}${number}`; // e.g. Blue@4829, Moon#7361
 };
+
+const generateVerificationToken = () => {
+  const rawToken    = crypto.randomBytes(32).toString("hex");
+  const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+  return { rawToken, hashedToken };
+};
+
+const generateAccessToken = (user) =>
+  jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
 
 const verifyToken = (req, res, next) => {
   try {
@@ -58,4 +67,6 @@ module.exports = {
   generateAccessToken,
   verifyAccessToken,
   verifyToken,
+  generateVerificationToken,
+  generateTempPassword
 };
