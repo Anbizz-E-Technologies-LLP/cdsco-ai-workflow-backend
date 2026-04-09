@@ -39,7 +39,7 @@ const createUser = async (req, res) => {
       email:           email.toLowerCase().trim(),
       password:        hashedPassword,
       role,
-      isActive:        true,
+      status:        true,
     });
 
     // ── 5. Access token ────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ const createUser = async (req, res) => {
         name:            user.name,
         email:           user.email,
         role:            user.role,
-        isActive:        user.isActive,
+        status:        user.status,
         createdAt:       user.createdAt,
       },
     });
@@ -89,7 +89,7 @@ const login = async (req, res) => {
     }
 
     // ── 3. Check active status ─────────────────────────────────────────────
-    if (!user.isActive) {
+    if (!user.status) {
       return res.status(403).json({ success: false, message: "Your account has been deactivated. Contact your administrator." });
     }
 
@@ -116,7 +116,7 @@ const login = async (req, res) => {
         name:      user.name,
         email:     user.email,
         role:      user.role,
-        isActive:  user.isActive,
+        status:  user.status,
         lastLogin: user.lastLogin,
       },
     });
@@ -129,11 +129,11 @@ const login = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const { role, isActive, page = 1, limit = 10, search } = req.query;
+    const { role, status, page = 1, limit = 10, search } = req.query;
 
     const filter = {};
     if (role)                  filter.role     = role;
-    if (isActive !== undefined) filter.isActive = isActive === "true";
+    if (status !== undefined) filter.status = status === "true";
     if (search) {
       filter.$or = [
         { name:  { $regex: search, $options: "i" } },
@@ -177,47 +177,98 @@ const getUserById = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { name, role, isActive } = req.body;
+    const { name, email, role, status } = req.body;
 
-    if (req.params.id === req.user._id.toString() && isActive === false) {
-      return res.status(400).json({ success: false, message: "You cannot deactivate your own account." });
+     if (role) {
+      const allowedRoles = ["admin", "reviewer", "analyst"];
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({ success: false, message: "Role must be one of: admin, reviewer, analyst." });
+      }
+    }
+
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ success: false, message: "Invalid email format." });
+      }
+       const existing = await User.findOne({ email: email.toLowerCase().trim(), _id: { $ne: req.params.id } });
+      if (existing) {
+        return res.status(409).json({ success: false, message: "Email is already in use by another user." });
+      }
     }
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
       {
-        ...(name && { name }),
-        ...(role && { role }),
-        ...(isActive !== undefined && { isActive }),
+        ...(name                && { name:  name.trim() }),
+        ...(email               && { email: email.toLowerCase().trim() }),
+        ...(role                && { role }),
+        ...(status !== undefined && { status }),
       },
       { new: true, runValidators: true }
-    ).populate("createdBy", "name email");
+    );
 
     if (!user) return res.status(404).json({ success: false, message: "User not found." });
 
-    return res.status(200).json({ success: true, message: "User updated successfully.", user });
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully.",
+      user: {
+        id:       user._id,
+        name:     user.name,
+        email:    user.email,
+        role:     user.role,
+        status: user.status,
+      },
+    });
+
   } catch (err) {
+    console.error("updateUser error:", err);
     return res.status(500).json({ success: false, message: "Failed to update user.", error: err.message });
   }
 };
 
 const deleteUser = async (req, res) => {
   try {
-    if (req.params.id === req.user._id.toString()) {
-      return res.status(400).json({ success: false, message: "You cannot delete your own account." });
+    const { id } = req.params;
+
+    // 🔍 Find user
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
+    // ❌ If ACTIVE → do not delete
+    if (user.status === true) {
+      return res.status(400).json({
+        success: false,
+        message: "Active user cannot be deleted"
+      });
+    }
 
-    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+    // ✅ If INACTIVE → delete permanently
+    await User.findByIdAndDelete(id);
 
-    return res.status(200).json({ success: true, message: "User deactivated successfully." });
+    return res.status(200).json({
+      success: true,
+      message: "Inactive user deleted permanently",
+      data: {
+        userId: id
+      }
+    });
+
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Failed to deactivate user.", error: err.message });
+    console.error("deleteUser error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message
+    });
   }
 };
 

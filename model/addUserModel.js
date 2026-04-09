@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema(
       enum:    { values: ROLES, message: "Role must be one of: admin, reviewer, analyst" },
       default: "reviewer",
     },
-    isActive: {
+    status: {
       type:    Boolean,
       default: true,
     },
