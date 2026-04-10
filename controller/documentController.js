@@ -560,50 +560,50 @@ exports.getDocuments = async (req, res) => {
   }
 };
  
-exports.getDocumentById = async (req, res) => {
-  try {
-    const doc = await Document.findById(req.params.id).populate(
-      "reviewedBy",
-      "name email"
-    );
+// exports.getDocumentById = async (req, res) => {
+//   try {
+//     const doc = await Document.findById(req.params.id).populate(
+//       "reviewedBy",
+//       "name email"
+//     );
  
-    if (!doc) {
-      return res.status(404).json({ success: false, error: "Document not found" });
-    }
+//     if (!doc) {
+//       return res.status(404).json({ success: false, error: "Document not found" });
+//     }
  
-    if (doc.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, error: "Forbidden — not your document" });
-    }
+//     if (doc.userId.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ success: false, error: "Forbidden — not your document" });
+//     }
  
-    return res.status(200).json({
-      success: true,
-      data: {
-        _id:          doc._id,
-        userId:       doc.userId,
-        originalName: doc.originalName,
-        fileType:     doc.fileType,
-        fileSize:     doc.fileSize,
-        wordCount:    doc.wordCount,
-        pageCount:    doc.pageCount,
-        status:       doc.status,
-        submittedAt:  doc.submittedAt,
-        reviewedAt:   doc.reviewedAt,
-        reviewedBy:   doc.reviewedBy,
-         customPrompt: doc.customPrompt,
-        analysisResult: doc.analysisResult,
-        gptResponse: {
-          model:        doc.gptResponse?.model,
-          tokens:       doc.gptResponse?.tokens,
-          finishReason: doc.gptResponse?.finishReason,
-        },
-        uploadedAt: doc.createdAt,
-        updatedAt:  doc.updatedAt,
-      },
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-};
+//     return res.status(200).json({
+//       success: true,
+//       data: {
+//         _id:          doc._id,
+//         userId:       doc.userId,
+//         originalName: doc.originalName,
+//         fileType:     doc.fileType,
+//         fileSize:     doc.fileSize,
+//         wordCount:    doc.wordCount,
+//         pageCount:    doc.pageCount,
+//         status:       doc.status,
+//         submittedAt:  doc.submittedAt,
+//         reviewedAt:   doc.reviewedAt,
+//         reviewedBy:   doc.reviewedBy,
+//          customPrompt: doc.customPrompt,
+//         analysisResult: doc.analysisResult,
+//         gptResponse: {
+//           model:        doc.gptResponse?.model,
+//           tokens:       doc.gptResponse?.tokens,
+//           finishReason: doc.gptResponse?.finishReason,
+//         },
+//         uploadedAt: doc.createdAt,
+//         updatedAt:  doc.updatedAt,
+//       },
+//     });
+//   } catch (err) {
+//     return res.status(500).json({ success: false, error: err.message });
+//   }
+// };
 
 exports.deleteDocument = async (req, res) => {
   try {
