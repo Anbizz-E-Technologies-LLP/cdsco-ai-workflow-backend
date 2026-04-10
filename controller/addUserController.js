@@ -84,7 +84,7 @@ const login = async (req, res) => {
     }
 
     // ── Only active users can login ────────────────────────────────────────
-    if (user.isActive !== true) {
+    if (user.status !== true) {
       return res.status(403).json({ success: false, message: "Your account is deactivated. Contact your administrator." });
     }
 
@@ -144,7 +144,7 @@ const changePassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found." });
     }
 
-     if (!user.isActive) {
+     if (!user.status) {
       return res.status(403).json({ success: false, message: "Your account is deactivated. Contact your administrator." });
     }
 

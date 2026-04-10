@@ -481,24 +481,77 @@ exports.reviewDocument = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message || "Review failed" });
   }
 };
- 
-
 exports.getDocuments = async (req, res) => {
   try {
-    const docs = await Document.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: docs.length, data: docs });
+     const allowedRoles = ["analyst", "reviewer"];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: "Forbidden — only analysts and reviewers can access",
+      });
+    }
+
+     const filter = { status: "pending_review" };
+
+    const docs = await Document.find(filter)
+      .select(
+        "_id userId originalName fileType fileSize wordCount pageCount status submittedAt reviewedAt reviewedBy reviewNote createdAt updatedAt"
+      )
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: docs.length,
+      data: docs,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
-
+ 
 exports.getDocumentById = async (req, res) => {
   try {
-    const doc = await Document.findById(req.params.id);
-    if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
-    res.status(200).json({ success: true, data: doc });
+    const doc = await Document.findById(req.params.id).populate(
+      "reviewedBy",
+      "name email"
+    );
+ 
+    if (!doc) {
+      return res.status(404).json({ success: false, error: "Document not found" });
+    }
+ 
+    if (doc.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, error: "Forbidden — not your document" });
+    }
+ 
+    return res.status(200).json({
+      success: true,
+      data: {
+        _id:          doc._id,
+        userId:       doc.userId,
+        originalName: doc.originalName,
+        fileType:     doc.fileType,
+        fileSize:     doc.fileSize,
+        wordCount:    doc.wordCount,
+        pageCount:    doc.pageCount,
+        status:       doc.status,
+        submittedAt:  doc.submittedAt,
+        reviewedAt:   doc.reviewedAt,
+        reviewedBy:   doc.reviewedBy,
+        reviewNote:   doc.reviewNote,
+        customPrompt: doc.customPrompt,
+        analysisResult: doc.analysisResult,
+        gptResponse: {
+          model:        doc.gptResponse?.model,
+          tokens:       doc.gptResponse?.tokens,
+          finishReason: doc.gptResponse?.finishReason,
+        },
+        uploadedAt: doc.createdAt,
+        updatedAt:  doc.updatedAt,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 

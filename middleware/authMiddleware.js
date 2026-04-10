@@ -23,11 +23,11 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Invalid token." });
     }
  
-     const user = await User.findById(decoded.id).select("+isActive");
+     const user = await User.findById(decoded.id).select("+status");
     if (!user) {
       return res.status(401).json({ success: false, message: "User no longer exists." });
     }
-    if (!user.isActive) {
+    if (!user.status) {
       return res.status(403).json({ success: false, message: "Your account has been deactivated." });
     }
  
