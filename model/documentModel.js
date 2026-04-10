@@ -18,73 +18,122 @@
 //       default: "uploaded",
 //     },
 
-//     // ── Flattened analysis fields (for easy querying/listing) ──────────────
+//     customPrompt: String,
+
+//     // Full structured analysis from GPT
 //     analysisResult: {
+//       documentType:      { type: String, default: "Unknown" },
 //       completenessScore: { type: Number, default: 0 },
-//       severityClass: { type: String, default: "other" },
-//       duplicateRisk: { type: Boolean, default: false },
-//       entityCount: { type: Number, default: 0 },
-//       piiEntities: [String],
-//       missingFields: [String],
-//       keyFindings: [String],
-//       recommendations: [String],
+//       plainEnglishSummary: { type: String, default: "" },
+
+//       documentOverview: {
+//         documentType: String,
+//         madeBy:       String,
+//         madeFor:      String,
+//         purpose:      String,
+//       },
+
+//       fieldByFieldExplanation: [
+//         {
+//           fieldName:           String,
+//           value:               String,
+//           plainEnglishMeaning: String,
+//           plainEnglishValue:   String,
+//         },
+//       ],
+
+//       technicalTermsExplained: [
+//         {
+//           term:              String,
+//           simpleExplanation: String,
+//         },
+//       ],
+
+//       unusualObservations: {
+//         hasUnusualValues: { type: Boolean, default: false },
+//         observations:     [String],
+//         missingFields:    [String],
+//       },
 //     },
 
-//     // ── Full GPT-4o response ───────────────────────────────────────────────
+//     // Raw GPT metadata
 //     gptResponse: {
-//       rawMessage: String,
-//       structured: mongoose.Schema.Types.Mixed,  // full JSON from GPT
-//       model: String,
+//       rawMessage:  String,
+//       structured:  mongoose.Schema.Types.Mixed,
+//       model:       String,
 //       tokens: {
-//         prompt: Number,
+//         prompt:     Number,
 //         completion: Number,
-//         total: Number,
+//         total:      Number,
 //       },
 //       finishReason: String,
 //     },
-
-//     customPrompt: String,
 //   },
 //   { timestamps: true }
 // );
 
 // module.exports = mongoose.model("Document", DocumentSchema);
-
+  
 const mongoose = require("mongoose");
 
 const DocumentSchema = new mongoose.Schema(
   {
-    originalName: { type: String, required: true },
+     userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+     originalName: { type: String, required: true },
     fileType: {
       type: String,
       enum: ["pdf", "txt", "docx", "other"],
       default: "other",
     },
-    fileSize: { type: Number },
+    fileSize:      { type: Number },
     extractedText: { type: String, default: "" },
-    wordCount: { type: Number, default: 0 },
-    pageCount: { type: Number, default: 1 },
+    wordCount:     { type: Number, default: 0 },
+    pageCount:     { type: Number, default: 1 },
+
     status: {
       type: String,
-      enum: ["uploaded", "processing", "processed", "failed"],
+      enum: [
+        "uploaded",
+        "processing",
+        "analyzed",
+        "failed",
+        "pending_review",
+        "changes_requested",
+        "approved",
+        "rejected",
+      ],
       default: "uploaded",
+      index: true,
     },
 
-    customPrompt: String,
+    customPrompt: { type: String, default: null },
 
-    // Full structured analysis from GPT
-    analysisResult: {
-      documentType:      { type: String, default: "Unknown" },
-      completenessScore: { type: Number, default: 0 },
+     submittedAt: { type: Date, default: null },
+
+     reviewedAt: { type: Date, default: null },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    reviewNote: { type: String, default: null },
+
+     analysisResult: {
+      documentType:        { type: String, default: "Unknown" },
+      completenessScore:   { type: Number, default: 0 },
       plainEnglishSummary: { type: String, default: "" },
-
       documentOverview: {
         documentType: String,
         madeBy:       String,
         madeFor:      String,
         purpose:      String,
       },
-
       fieldByFieldExplanation: [
         {
           fieldName:           String,
@@ -93,14 +142,12 @@ const DocumentSchema = new mongoose.Schema(
           plainEnglishValue:   String,
         },
       ],
-
       technicalTermsExplained: [
         {
           term:              String,
           simpleExplanation: String,
         },
       ],
-
       unusualObservations: {
         hasUnusualValues: { type: Boolean, default: false },
         observations:     [String],
@@ -108,11 +155,10 @@ const DocumentSchema = new mongoose.Schema(
       },
     },
 
-    // Raw GPT metadata
-    gptResponse: {
-      rawMessage:  String,
-      structured:  mongoose.Schema.Types.Mixed,
-      model:       String,
+     gptResponse: {
+      rawMessage:   String,
+      structured:   mongoose.Schema.Types.Mixed,
+      model:        String,
       tokens: {
         prompt:     Number,
         completion: Number,
@@ -125,4 +171,3 @@ const DocumentSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Document", DocumentSchema);
-  

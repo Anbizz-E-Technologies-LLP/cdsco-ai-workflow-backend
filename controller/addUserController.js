@@ -7,9 +7,8 @@ const { sendWelcomeEmail } = require("../utils/sendEmail");
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, role, password } = req.body; // ← add password
+    const { name, email, role, password } = req.body; 
 
-    // ── 1. Validation ──────────────────────────────────────────────────────
     if (!name || !email || !role || !password) {
       return res.status(400).json({ success: false, message: "Name, email, role and password are required." });
     }
@@ -24,13 +23,11 @@ const createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "Role must be one of: admin, reviewer, analyst." });
     }
 
-    // ── 2. Duplicate check ─────────────────────────────────────────────────
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) {
       return res.status(409).json({ success: false, message: "A user with this email already exists." });
     }
 
-    // ── 3. Hash the admin-provided password ────────────────────────────────
     const hashedPassword = await bcrypt.hash(password, 12); // ← use password from body
 
     // ── 4. Persist user ────────────────────────────────────────────────────
@@ -77,39 +74,33 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ── 1. Validation ──────────────────────────────────────────────────────
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email and password are required." });
     }
 
-    // ── 2. Find user (include password field since select:false) ───────────
     const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
 
-    // ── 3. Check active status ─────────────────────────────────────────────
-    if (!user.status) {
-      return res.status(403).json({ success: false, message: "Your account has been deactivated. Contact your administrator." });
+    // ── Only active users can login ────────────────────────────────────────
+    if (user.isActive !== true) {
+      return res.status(403).json({ success: false, message: "Your account is deactivated. Contact your administrator." });
     }
 
-    // ── 4. Compare password ────────────────────────────────────────────────
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
 
-    // ── 5. Update last login ───────────────────────────────────────────────
     user.lastLogin = new Date();
     await user.save();
 
-    // ── 6. Generate token ──────────────────────────────────────────────────
     const accessToken = generateAccessToken(user);
 
-    // ── 7. Respond ─────────────────────────────────────────────────────────
     return res.status(200).json({
-      success: true,
-      message: "Login successful.",
+      success:     true,
+      message:     "Login successful.",
       accessToken,
       user: {
         id:        user._id,
@@ -127,6 +118,53 @@ const login = async (req, res) => {
   }
 };
 
+
+const changePassword = async (req, res) => {
+  try {
+    const { email, oldPassword, newPassword, confirmPassword } = req.body;
+
+     if (!email || !oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: "All fields are required." });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: "New password and confirm password do not match." });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters." });
+    }
+
+    if (oldPassword === newPassword) {
+      return res.status(400).json({ success: false, message: "New password cannot be the same as old password." });
+    }
+
+     const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+     if (!user.isActive) {
+      return res.status(403).json({ success: false, message: "Your account is deactivated. Contact your administrator." });
+    }
+
+     const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Old password is incorrect." });
+    }
+
+     user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password changed successfully." });
+
+  } catch (err) {
+    console.error("changePassword error:", err);
+    return res.status(500).json({ success: false, message: "Failed to change password.", error: err.message });
+  }
+};
+
+ 
 const getAllUsers = async (req, res) => {
   try {
     const { role, status, page = 1, limit = 10, search } = req.query;
@@ -272,4 +310,4 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser, login };
+module.exports = { createUser, getAllUsers, getUserById, updateUser, deleteUser, login , changePassword};
