@@ -73,7 +73,7 @@
 // );
 
 // module.exports = mongoose.model("Document", DocumentSchema);
-  
+
 const mongoose = require("mongoose");
 
 const DocumentSchema = new mongoose.Schema(
@@ -103,6 +103,7 @@ const DocumentSchema = new mongoose.Schema(
         "processing",
         "analyzed",
         "failed",
+        "deleted",  
         "pending_review",
         "changes_requested",
         "approved",
@@ -113,7 +114,7 @@ const DocumentSchema = new mongoose.Schema(
     },
 
     customPrompt: { type: String, default: null },
-
+    deletedAt: { type: Date, default: null },
      submittedAt: { type: Date, default: null },
 
      reviewedAt: { type: Date, default: null },

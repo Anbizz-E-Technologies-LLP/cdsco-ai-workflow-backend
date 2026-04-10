@@ -288,21 +288,21 @@ exports.uploadDocument = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
- 
-    const userId = req.user?._id;
+
+const userId = req.user?._id ?? req.body.userId
     if (!userId) {
       return res.status(401).json({ error: "Unauthorised — userId missing" });
     }
- 
-     const fileType = getFileType(req.file.originalname);
+
+    const fileType = getFileType(req.file.originalname);
     let extractedText = "";
     let pageCount = 1;
- 
+
     if (fileType === "pdf") {
       const parsed = await pdfParse(req.file.buffer);
       extractedText = parsed.text || "";
-      pageCount     = parsed.numpages || 1;
- 
+      pageCount = parsed.numpages || 1;
+
       if (!extractedText || extractedText.trim().length < 20) {
         console.log("⚠️ No text found in PDF — GPT-4o Vision will handle it.");
         extractedText = "[Scanned PDF — content extracted via GPT-4o Vision]";
@@ -312,71 +312,71 @@ exports.uploadDocument = async (req, res) => {
     } else if (fileType === "image") {
       extractedText = "[Image — content extracted via GPT-4o Vision]";
     }
- 
-    const wordCount    = extractedText.split(/\s+/).filter(Boolean).length;
+
+    const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
     const customPrompt = req.body.prompt || null;
- 
+
     console.log(`🤖 Analyzing "${req.file.originalname}" (${fileType}) with GPT-4o...`);
- 
-     const gptResponse = await analyzeDocument({
+
+    const gptResponse = await analyzeDocument({
       fileType,
       extractedText,
-      fileBuffer:   req.file.buffer,
+      fileBuffer: req.file.buffer,
       originalName: req.file.originalname,
       customPrompt,
     });
- 
+
     const s = gptResponse.structured;
- 
-     const doc = await Document.create({
+
+    const doc = await Document.create({
       userId,
       originalName: req.file.originalname,
-      fileType:     fileType === "image" ? "other" : fileType,
-      fileSize:     req.file.size,
+      fileType: fileType === "image" ? "other" : fileType,
+      fileSize: req.file.size,
       extractedText,
       wordCount,
       pageCount,
-      status:       "analyzed",
+      status: "analyzed",
       customPrompt,
       gptResponse: {
-        rawMessage:   gptResponse.rawMessage,
-        structured:   s,
-        model:        gptResponse.model,
-        tokens:       gptResponse.tokens,
+        rawMessage: gptResponse.rawMessage,
+        structured: s,
+        model: gptResponse.model,
+        tokens: gptResponse.tokens,
         finishReason: gptResponse.finishReason,
       },
       analysisResult: {
-        documentType:        s.documentType,
-        completenessScore:   s.completenessScore,
+        documentType: s.documentType,
+        completenessScore: s.completenessScore,
         plainEnglishSummary: s.plainEnglishSummary,
-        documentOverview:    s.documentOverview,
-        fieldByFieldExplanation:  s.fieldByFieldExplanation  || [],
-        technicalTermsExplained:  s.technicalTermsExplained  || [],
-        unusualObservations:      s.unusualObservations || {
+        documentOverview: s.documentOverview,
+        fieldByFieldExplanation: s.fieldByFieldExplanation || [],
+        technicalTermsExplained: s.technicalTermsExplained || [],
+        unusualObservations: s.unusualObservations || {
           hasUnusualValues: false,
-          observations:     [],
-          missingFields:    [],
+          observations: [],
+          missingFields: [],
         },
       },
     });
- 
+
     return res.status(201).json({
       success: true,
       message: "File uploaded and analyzed successfully",
       document: {
-        _id:          doc._id,
-        userId:       doc.userId,
+        _id: doc._id,
+        userId: doc.userId,
         originalName: doc.originalName,
-        fileType:     doc.fileType,
-        fileSize:     doc.fileSize,
-        wordCount:    doc.wordCount,
-        pageCount:    doc.pageCount,
-        status:       doc.status,
-        uploadedAt:   doc.createdAt,
+        fileType: doc.fileType,
+        fileSize: doc.fileSize,
+        wordCount: doc.wordCount,
+        pageCount: doc.pageCount,
+        status: doc.status,
+        uploadedAt: doc.createdAt,
         analysisResult: doc.analysisResult,
         gptResponse: {
-          tokens:      gptResponse.tokens,
-          model:       gptResponse.model,
+          tokens: gptResponse.tokens,
+          model: gptResponse.model,
           finishReason: gptResponse.finishReason,
         },
       },
@@ -386,20 +386,20 @@ exports.uploadDocument = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message || "Upload failed" });
   }
 };
- 
+
 
 exports.submitForApproval = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
- 
+
     if (!doc) {
       return res.status(404).json({ success: false, error: "Document not found" });
     }
- 
+
     if (doc.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, error: "Forbidden — not your document" });
     }
- 
+
     const allowedStatuses = ["analyzed", "changes_requested"];
     if (!allowedStatuses.includes(doc.status)) {
       return res.status(409).json({
@@ -407,18 +407,18 @@ exports.submitForApproval = async (req, res) => {
         error: `Cannot submit — document is currently "${doc.status}"`,
       });
     }
- 
-    doc.status      = "pending_review";
+
+    doc.status = "pending_review";
     doc.submittedAt = new Date();
-    doc.reviewNote  = null; 
+    doc.reviewNote = null;
     await doc.save();
- 
+
     return res.status(200).json({
-      success:  true,
-      message:  "Document submitted for approval",
+      success: true,
+      message: "Document submitted for approval",
       document: {
-        _id:         doc._id,
-        status:      doc.status,
+        _id: doc._id,
+        status: doc.status,
         submittedAt: doc.submittedAt,
       },
     });
@@ -427,11 +427,11 @@ exports.submitForApproval = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message || "Submission failed" });
   }
 };
- 
+
 exports.reviewDocument = async (req, res) => {
   try {
     const { action, note } = req.body;
- 
+
     const validActions = ["approve", "reject", "request_changes"];
     if (!validActions.includes(action)) {
       return res.status(400).json({
@@ -439,38 +439,38 @@ exports.reviewDocument = async (req, res) => {
         error: `Invalid action. Allowed: ${validActions.join(", ")}`,
       });
     }
- 
+
     const doc = await Document.findById(req.params.id);
- 
+
     if (!doc) {
       return res.status(404).json({ success: false, error: "Document not found" });
     }
- 
+
     if (doc.status !== "pending_review") {
       return res.status(409).json({
         success: false,
         error: `Cannot review — document is currently "${doc.status}"`,
       });
     }
- 
+
     const actionStatusMap = {
-      approve:         "approved",
-      reject:          "rejected",
+      approve: "approved",
+      reject: "rejected",
       request_changes: "changes_requested",
     };
- 
-    doc.status     = actionStatusMap[action];
+
+    doc.status = actionStatusMap[action];
     doc.reviewedAt = new Date();
     doc.reviewedBy = req.user._id;
     doc.reviewNote = note || null;
     await doc.save();
- 
+
     return res.status(200).json({
-      success:  true,
-      message:  `Document ${action.replace("_", " ")}d successfully`,
+      success: true,
+      message: `Document ${action.replace("_", " ")}d successfully`,
       document: {
-        _id:        doc._id,
-        status:     doc.status,
+        _id: doc._id,
+        status: doc.status,
         reviewedAt: doc.reviewedAt,
         reviewedBy: doc.reviewedBy,
         reviewNote: doc.reviewNote,
@@ -481,86 +481,107 @@ exports.reviewDocument = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message || "Review failed" });
   }
 };
+// exports.getDocuments = async (req, res) => {
+//   try {
+//     const allowedRoles = ["analyst", "reviewer"];
+//     if (!allowedRoles.includes(req.user.role)) {
+//       return res.status(403).json({
+//         success: false,
+//         error: "Forbidden — only analysts and reviewers can access",
+//       });
+//     }
+
+//     const filter = { status: "pending_review" };
+
+//     const docs = await Document.find(filter)
+//       .select(
+//         "_id userId originalName fileType fileSize wordCount pageCount status submittedAt reviewedAt reviewedBy reviewNote createdAt updatedAt"
+//       )
+//       .sort({ createdAt: -1 });
+
+//     return res.status(200).json({
+//       success: true,
+//       count: docs.length,
+//       data: docs,
+//     });
+//   } catch (err) {
+//     return res.status(500).json({ success: false, error: err.message });
+//   }
+// };
+
+exports.getDocumentById = async (req, res) => {
+  try {
+    const doc = await Document.findById(req.params.id);
+    if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
+    res.status(200).json({ success: true, data: doc });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 exports.getDocuments = async (req, res) => {
   try {
-     const allowedRoles = ["analyst", "reviewer"];
-    if (!allowedRoles.includes(req.user.role)) {
+    const { role, _id: loggedInUserId } = req.user
+
+    let filter = {}
+
+    if (role === 'analyst') {
+      // analyst sees only their own documents
+      // userId from query param as fallback, but always trust req.user._id
+      filter = { userId: loggedInUserId }
+
+    } else if (role === 'reviewer') {
+      // reviewer sees all pending_review documents
+      filter = { status: 'pending_review' }
+
+    } else if (role === 'admin') {
+      // admin sees everything — no filter
+      filter = { status: 'pending_review' }
+
+    } else {
       return res.status(403).json({
         success: false,
-        error: "Forbidden — only analysts and reviewers can access",
-      });
+        error: 'Forbidden — insufficient role',
+      })
     }
-
-     const filter = { status: "pending_review" };
 
     const docs = await Document.find(filter)
       .select(
-        "_id userId originalName fileType fileSize wordCount pageCount status submittedAt reviewedAt reviewedBy reviewNote createdAt updatedAt"
+        '_id userId originalName fileType fileSize wordCount pageCount status isSubmitted submittedAt reviewedAt reviewedBy reviewNote analysisResult createdAt updatedAt'
       )
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
 
     return res.status(200).json({
       success: true,
       count: docs.length,
       data: docs,
-    });
+    })
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message })
   }
-};
- 
-exports.getDocumentById = async (req, res) => {
-  try {
-    const doc = await Document.findById(req.params.id).populate(
-      "reviewedBy",
-      "name email"
-    );
- 
-    if (!doc) {
-      return res.status(404).json({ success: false, error: "Document not found" });
-    }
- 
-    if (doc.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, error: "Forbidden — not your document" });
-    }
- 
-    return res.status(200).json({
-      success: true,
-      data: {
-        _id:          doc._id,
-        userId:       doc.userId,
-        originalName: doc.originalName,
-        fileType:     doc.fileType,
-        fileSize:     doc.fileSize,
-        wordCount:    doc.wordCount,
-        pageCount:    doc.pageCount,
-        status:       doc.status,
-        submittedAt:  doc.submittedAt,
-        reviewedAt:   doc.reviewedAt,
-        reviewedBy:   doc.reviewedBy,
-        reviewNote:   doc.reviewNote,
-        customPrompt: doc.customPrompt,
-        analysisResult: doc.analysisResult,
-        gptResponse: {
-          model:        doc.gptResponse?.model,
-          tokens:       doc.gptResponse?.tokens,
-          finishReason: doc.gptResponse?.finishReason,
-        },
-        uploadedAt: doc.createdAt,
-        updatedAt:  doc.updatedAt,
-      },
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-};
+}
+
+// exports.deleteDocument = async (req, res) => {
+//   try {
+//     const doc = await Document.findByIdAndDelete(req.params.id);
+//     if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
+//     res.status(200).json({ success: true, message: "Document deleted successfully" });
+//   } catch (err) {
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// };
 
 exports.deleteDocument = async (req, res) => {
   try {
-    const doc = await Document.findByIdAndDelete(req.params.id);
-    if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
-    res.status(200).json({ success: true, message: "Document deleted successfully" });
+    const doc = await Document.findById(req.params.id)
+    if (!doc) return res.status(404).json({ success: false, error: "Document not found" })
+
+    doc.status = 'deleted'
+    doc.deletedAt = new Date()
+    await doc.save()
+
+    res.status(200).json({ success: true, message: "Document deleted successfully", status: doc.status })
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message })
   }
-};
+}
