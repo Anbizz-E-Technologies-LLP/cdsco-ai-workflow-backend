@@ -79,9 +79,13 @@ const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+    // if (!user) {
+    //   return res.status(401).json({ success: false, message: "Invalid email or password." });
+    // }
+
     if (!user) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
-    }
+  return res.status(401).json({ success: false, message: "Invalid email address." });
+}
 
     // ── Only active users can login ────────────────────────────────────────
     if (user.status !== true) {
@@ -89,9 +93,12 @@ const login = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    // if (!isMatch) {
+    //   return res.status(401).json({ success: false, message: "Invalid email or password." });
+    // }
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
-    }
+  return res.status(401).json({ success: false, message: "Invalid password." });
+}
 
     user.lastLogin = new Date();
     await user.save();

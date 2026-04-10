@@ -122,8 +122,6 @@ const DocumentSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
-    reviewNote: { type: String, default: null },
-
      analysisResult: {
       documentType:        { type: String, default: "Unknown" },
       completenessScore:   { type: Number, default: 0 },

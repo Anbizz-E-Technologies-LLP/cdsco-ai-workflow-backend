@@ -410,8 +410,7 @@ exports.submitForApproval = async (req, res) => {
  
     doc.status      = "pending_review";
     doc.submittedAt = new Date();
-    doc.reviewNote  = null; 
-    await doc.save();
+     await doc.save();
  
     return res.status(200).json({
       success:  true,
@@ -462,8 +461,7 @@ exports.reviewDocument = async (req, res) => {
     doc.status     = actionStatusMap[action];
     doc.reviewedAt = new Date();
     doc.reviewedBy = req.user._id;
-    doc.reviewNote = note || null;
-    await doc.save();
+     await doc.save();
  
     return res.status(200).json({
       success:  true,
@@ -473,7 +471,6 @@ exports.reviewDocument = async (req, res) => {
         status:     doc.status,
         reviewedAt: doc.reviewedAt,
         reviewedBy: doc.reviewedBy,
-        reviewNote: doc.reviewNote,
       },
     });
   } catch (err) {
@@ -495,7 +492,7 @@ exports.getDocuments = async (req, res) => {
 
     const docs = await Document.find(filter)
       .select(
-        "_id userId originalName fileType fileSize wordCount pageCount status submittedAt reviewedAt reviewedBy reviewNote createdAt updatedAt"
+        "_id userId originalName fileType fileSize wordCount pageCount status submittedAt reviewedAt reviewedBy createdAt updatedAt"
       )
       .sort({ createdAt: -1 });
 
@@ -538,8 +535,7 @@ exports.getDocumentById = async (req, res) => {
         submittedAt:  doc.submittedAt,
         reviewedAt:   doc.reviewedAt,
         reviewedBy:   doc.reviewedBy,
-        reviewNote:   doc.reviewNote,
-        customPrompt: doc.customPrompt,
+         customPrompt: doc.customPrompt,
         analysisResult: doc.analysisResult,
         gptResponse: {
           model:        doc.gptResponse?.model,
