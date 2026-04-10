@@ -1,4 +1,4 @@
-const User = require("../models/User");
+const User = require("../model/addUserModel");
 const { verifyAccessToken } = require("../middleware/generateAccessToken");
  
 const protect = async (req, res, next) => {
@@ -36,4 +36,8 @@ const protect = async (req, res, next) => {
   } catch (err) {
     return res.status(500).json({ success: false, message: "Authentication error.", error: err.message });
   }
+};
+
+module.exports = {
+  protect
 };
