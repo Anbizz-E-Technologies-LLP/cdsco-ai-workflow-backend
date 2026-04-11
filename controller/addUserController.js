@@ -28,10 +28,9 @@ const createUser = async (req, res) => {
       return res.status(409).json({ success: false, message: "A user with this email already exists." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12); // ← use password from body
+    const hashedPassword = await bcrypt.hash(password, 12); 
 
-    // ── 4. Persist user ────────────────────────────────────────────────────
-    const user = await User.create({
+     const user = await User.create({
       name:            name.trim(),
       email:           email.toLowerCase().trim(),
       password:        hashedPassword,
@@ -39,18 +38,15 @@ const createUser = async (req, res) => {
       status:        true,
     });
 
-    // ── 5. Access token ────────────────────────────────────────────────────
-    const accessToken = generateAccessToken(user);
+     const accessToken = generateAccessToken(user);
 
-    // ── 6. Send email with the plain password admin typed ──────────────────
-    try {
-      await sendWelcomeEmail({ name, email, role, tempPassword: password }); // ← plain password
+     try {
+      await sendWelcomeEmail({ name, email, role, tempPassword: password });
     } catch (emailErr) {
       console.error("Welcome email failed:", emailErr.message);
     }
 
-    // ── 7. Respond ─────────────────────────────────────────────────────────
-    return res.status(201).json({
+     return res.status(201).json({
       success: true,
       message: `User created successfully. Welcome email sent to ${email}.`,
       accessToken,
@@ -79,23 +75,15 @@ const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
-    // if (!user) {
-    //   return res.status(401).json({ success: false, message: "Invalid email or password." });
-    // }
-
     if (!user) {
   return res.status(401).json({ success: false, message: "Invalid email address." });
 }
 
-    // ── Only active users can login ────────────────────────────────────────
-    if (user.status !== true) {
+     if (user.status !== true) {
       return res.status(403).json({ success: false, message: "Your account is deactivated. Contact your administrator." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    // if (!isMatch) {
-    //   return res.status(401).json({ success: false, message: "Invalid email or password." });
-    // }
     if (!isMatch) {
   return res.status(401).json({ success: false, message: "Invalid password." });
 }
@@ -277,7 +265,6 @@ const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 🔍 Find user
     const user = await User.findById(id);
 
     if (!user) {
@@ -286,8 +273,6 @@ const deleteUser = async (req, res) => {
         message: "User not found"
       });
     }
-
-    // ❌ If ACTIVE → do not delete
     if (user.status === true) {
       return res.status(400).json({
         success: false,
@@ -295,8 +280,7 @@ const deleteUser = async (req, res) => {
       });
     }
 
-    // ✅ If INACTIVE → delete permanently
-    await User.findByIdAndDelete(id);
+     await User.findByIdAndDelete(id);
 
     return res.status(200).json({
       success: true,
