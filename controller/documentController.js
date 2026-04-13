@@ -151,8 +151,6 @@ exports.submitForApproval = async (req, res) => {
       })
     })
 
-    console.log(`🔔 Notified ${staffUsers.length} staff members`)
-
     return res.status(200).json({
       success: true,
       message: "Document submitted for approval",
