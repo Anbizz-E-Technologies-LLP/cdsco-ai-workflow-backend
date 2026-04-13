@@ -4,6 +4,7 @@ const { analyzeDocument } = require("../services/aiService");
 const { getFileType } = require("../utils/Filehelpers");
 const { sendNotification } = require("./notificationController");
 const User = require("../model/addUserModel");
+const { Types } = require("mongoose");
 
 exports.uploadDocument = async (req, res) => {
   try {
@@ -26,7 +27,7 @@ exports.uploadDocument = async (req, res) => {
       pageCount = parsed.numpages || 1;
 
       if (!extractedText || extractedText.trim().length < 20) {
-         extractedText = "[Scanned PDF — content extracted via GPT-4o Vision]";
+        extractedText = "[Scanned PDF — content extracted via GPT-4o Vision]";
       }
     } else if (fileType === "txt") {
       extractedText = req.file.buffer.toString("utf8");
@@ -206,12 +207,12 @@ exports.reviewDocument = async (req, res) => {
     doc.reviewNote = note || null;
     await doc.save();
 
-  sendNotification(doc.userId, {
-    type: 'DOCUMENT_REVIEWED',
-    documentName: doc.originalName,
-    status: doc.status,
-    message: `Your document "${doc.originalName}" has been ${doc.status}.`,
-  })
+    sendNotification(doc.userId, {
+      type: 'DOCUMENT_REVIEWED',
+      documentName: doc.originalName,
+      status: doc.status,
+      message: `Your document "${doc.originalName}" has been ${doc.status}.`,
+    })
 
     return res.status(200).json({
       success: true,
@@ -231,43 +232,23 @@ exports.reviewDocument = async (req, res) => {
   }
 };
 
-exports.getDocumentById = async (req, res) => {
-  try {
-    const doc = await Document.findById(req.params.id);
-    if (!doc)
-      return res
-        .status(404)
-        .json({ success: false, error: "Document not found" });
-    res.status(200).json({ success: true, data: doc });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-};
 
 exports.getDocuments = async (req, res) => {
   try {
     const { role, _id: loggedInUserId } = req.user;
 
-    let filter = {};
+    let matchFilter = {};
 
     if (role === "analyst") {
-      filter = { userId: loggedInUserId };
-    } else if (role === "reviewer") {
-      filter = {
+      matchFilter = { userId: new Types.ObjectId(loggedInUserId) };
+    } else if (role === "reviewer" || role === "admin") {
+      matchFilter = {
         $or: [
           { status: "pending_review" },
           { status: "approved" },
           { status: "rejected" },
-          { reviewedBy: loggedInUserId },
-        ],
-      };
-    } else if (role === "admin") {
-      filter = {
-        $or: [
-          { status: "pending_review" },
-          { status: "approved" },
-          { status: "rejected" },
-          { reviewedBy: loggedInUserId },
+          { status: "deleted" },
+          { reviewedBy: new Types.ObjectId(loggedInUserId) },
         ],
       };
     } else {
@@ -277,17 +258,110 @@ exports.getDocuments = async (req, res) => {
       });
     }
 
-    const docs = await Document.find(filter)
-      .select(
-        "_id userId originalName fileType fileSize wordCount pageCount status isSubmitted submittedAt reviewedAt reviewedBy reviewNote analysisResult createdAt updatedAt",
-      )
-      .sort({ createdAt: -1 });
+    const docs = await Document.aggregate([
+      { $match: matchFilter },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "reviewedBy",
+          foreignField: "_id",
+          as: "reviewedBy",
+        },
+      },
+      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$reviewedBy", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          userId: { _id: 1, name: 1, email: 1, role: 1 },
+          originalName: 1,
+          fileType: 1,
+          fileSize: 1,
+          wordCount: 1,
+          pageCount: 1,
+          status: 1,
+          isSubmitted: 1,
+          submittedAt: 1,
+          reviewedAt: 1,
+          reviewedBy: { _id: 1, name: 1, email: 1, role: 1 },
+          reviewNote: 1,
+          analysisResult: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ]);
 
     return res.status(200).json({
       success: true,
       count: docs.length,
       data: docs,
     });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+exports.getDocumentById = async (req, res) => {
+  try {
+    const docs = await Document.aggregate([
+      { $match: { _id: new Types.ObjectId(req.params.id) } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "reviewedBy",
+          foreignField: "_id",
+          as: "reviewedBy",
+        },
+      },
+      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$reviewedBy", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          userId: { _id: 1, name: 1, email: 1, role: 1 },
+          originalName: 1,
+          fileType: 1,
+          fileSize: 1,
+          wordCount: 1,
+          pageCount: 1,
+          status: 1,
+          isSubmitted: 1,
+          submittedAt: 1,
+          reviewedAt: 1,
+          reviewedBy: { _id: 1, name: 1, email: 1, role: 1 },
+          reviewNote: 1,
+          analysisResult: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+    ]);
+
+    if (!docs.length) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Document not found" });
+    }
+
+    return res.status(200).json({ success: true, data: docs[0] });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -301,14 +375,14 @@ exports.deleteDocument = async (req, res) => {
         .status(404)
         .json({ success: false, error: "Document not found" });
 
-      doc.status = "deleted";
-      doc.deletedAt = new Date();
-      await doc.save();
+    doc.status = "deleted";
+    doc.deletedAt = new Date();
+    await doc.save();
 
-        const staffUsers = await User.find(
-        { role: { $in: ['reviewer', 'admin'] } },
-        '_id'
-      );
+    const staffUsers = await User.find(
+      { role: { $in: ['reviewer', 'admin'] } },
+      '_id'
+    );
 
     const analystName = req.user.name || req.user.email || 'An analyst';
 
