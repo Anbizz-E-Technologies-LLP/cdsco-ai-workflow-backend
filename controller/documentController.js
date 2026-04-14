@@ -102,7 +102,7 @@ exports.uploadDocument = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Upload error:", err);
+   
     return res
       .status(500)
       .json({ success: false, error: err.message || "Upload failed" });
@@ -161,7 +161,7 @@ exports.submitForApproval = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Submit error:", err);
+   
     return res.status(500).json({ success: false, error: err.message || "Submission failed" });
   }
 };
@@ -223,7 +223,7 @@ exports.reviewDocument = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Review error:", err);
+    
     return res
       .status(500)
       .json({ success: false, error: err.message || "Review failed" });

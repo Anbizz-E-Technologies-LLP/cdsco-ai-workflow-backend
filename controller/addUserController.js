@@ -43,7 +43,7 @@ const createUser = async (req, res) => {
      try {
       await sendWelcomeEmail({ name, email, role, tempPassword: password });
     } catch (emailErr) {
-      console.error("Welcome email failed:", emailErr.message);
+      
     }
 
      return res.status(201).json({
@@ -61,7 +61,7 @@ const createUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("createUser error:", err);
+    
     return res.status(500).json({ success: false, message: "Failed to create user.", error: err.message });
   }
 };
@@ -108,7 +108,7 @@ const login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("login error:", err);
+    
     return res.status(500).json({ success: false, message: "Login failed.", error: err.message });
   }
 };
@@ -154,7 +154,7 @@ const changePassword = async (req, res) => {
     return res.status(200).json({ success: true, message: "Password changed successfully." });
 
   } catch (err) {
-    console.error("changePassword error:", err);
+    
     return res.status(500).json({ success: false, message: "Failed to change password.", error: err.message });
   }
 };
@@ -256,7 +256,7 @@ const updateUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("updateUser error:", err);
+  
     return res.status(500).json({ success: false, message: "Failed to update user.", error: err.message });
   }
 };
@@ -291,7 +291,7 @@ const deleteUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("deleteUser error:", err);
+   
 
     return res.status(500).json({
       success: false,

@@ -1,10 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const upload = require('../middleware/upload')  // ✅ Your multer
+const upload = require('../middleware/upload')  // Your multer
 const documentController = require('../controller/documentController')
 const { protect } = require('../middleware/authMiddleware')  // ← import it
 
-// ✅ These routes
+// These routes
 router.post('/', upload.single('file'),  protect,documentController.uploadDocument)
 router.get('/',  protect, documentController.getDocuments)
 router.get('/:id', documentController.getDocumentById)

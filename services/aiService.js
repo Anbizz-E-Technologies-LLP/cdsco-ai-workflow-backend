@@ -126,7 +126,7 @@ const analyzeDocument = async ({
   const structured = extractJSON(rawMessage);
 
   if (structured) {
-    console.log("✅ GPT-4o JSON parsed successfully.");
+    
   } else {
     console.error(
       "⚠️ GPT-4o returned non-parseable JSON. Raw snippet:",

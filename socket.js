@@ -12,7 +12,7 @@ const initSocket = (httpServer) => {
   })
 
   io.on('connection', (socket) => {
-    console.log('Socket connected:', socket.id)
+    
 
     socket.on('register', (userId) => {
        if (!userId) {
