@@ -9,12 +9,7 @@ const openaiClient = new OpenAI({
   defaultHeaders: { "api-key": process.env.AZURE_OPENAI_KEY },
 });
 
-/**
- * Strips markdown fences and trailing commas, then parses JSON safely.
- * Returns null if parsing fails entirely.
- * @param {string} raw
- * @returns {object|null}
- */
+
 const extractJSON = (raw) => {
   let text = raw
     .replace(/^```json\s*/i, "")
@@ -42,11 +37,7 @@ const extractJSON = (raw) => {
   return null;
 };
 
-/**
- * Builds the fallback structured object when GPT returns unparseable output.
- * @param {string} rawMessage
- * @returns {object}
- */
+
 const buildFallback = (rawMessage) => ({
   documentOverview: {
     documentType: "Unknown",
@@ -67,17 +58,6 @@ const buildFallback = (rawMessage) => ({
   completenessScore: 0,
 });
 
-/**
- * Sends document content to GPT-4o and returns a structured analysis.
- *
- * @param {object} params
- * @param {"pdf"|"txt"|"docx"|"image"|"other"} params.fileType
- * @param {string}  params.extractedText  - Pre-extracted text (empty for images)
- * @param {Buffer}  params.fileBuffer     - Raw file buffer
- * @param {string}  params.originalName   - Original filename
- * @param {string|null} params.customPrompt - Optional override prompt
- * @returns {Promise<{rawMessage, structured, model, tokens, finishReason}>}
- */
 const analyzeDocument = async ({
   fileType,
   extractedText,
@@ -126,10 +106,10 @@ const analyzeDocument = async ({
   const structured = extractJSON(rawMessage);
 
   if (structured) {
-    
+    console.log("Parsed successfully.");
   } else {
     console.error(
-      "⚠️ GPT-4o returned non-parseable JSON. Raw snippet:",
+      "Non-parseable JSON.",
       rawMessage.slice(0, 300)
     );
   }
