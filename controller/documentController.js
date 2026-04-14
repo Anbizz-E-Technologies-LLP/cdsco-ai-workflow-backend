@@ -9,14 +9,10 @@ const { uploadToAzureBlob, deleteFromAzureBlob, generateSasUrl } = require("../u
 
 exports.uploadDocument = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const userId = req.user?._id ?? req.body.userId;
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorised — userId missing" });
-    }
+    if (!userId) return res.status(401).json({ error: "Unauthorised — userId missing" });
 
     const fileType = getFileType(req.file.originalname);
     let extractedText = "";
@@ -26,10 +22,8 @@ exports.uploadDocument = async (req, res) => {
       const parsed = await pdfParse(req.file.buffer);
       extractedText = parsed.text || "";
       pageCount = parsed.numpages || 1;
-
-      if (!extractedText || extractedText.trim().length < 20) {
+      if (!extractedText || extractedText.trim().length < 20)
         extractedText = "[Scanned PDF — content extracted via GPT-4o Vision]";
-      }
     } else if (fileType === "txt") {
       extractedText = req.file.buffer.toString("utf8");
     } else if (fileType === "image") {
@@ -38,6 +32,10 @@ exports.uploadDocument = async (req, res) => {
 
     const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
     const customPrompt = req.body.prompt || null;
+
+    // ── Upload to Azure Blob ──────────────────────────────────────────────────
+    const { url: blobUrl, uniqueFileName: blobFileName } =
+      await uploadToAzureBlob(req.file);
 
     const gptResponse = await analyzeDocument({
       fileType,
@@ -59,6 +57,8 @@ exports.uploadDocument = async (req, res) => {
       pageCount,
       status: "analyzed",
       customPrompt,
+      blobUrl,        // ← new
+      blobFileName,   // ← new
       gptResponse: {
         rawMessage: gptResponse.rawMessage,
         structured: s,
@@ -94,6 +94,7 @@ exports.uploadDocument = async (req, res) => {
         pageCount: doc.pageCount,
         status: doc.status,
         uploadedAt: doc.createdAt,
+        blobUrl: doc.blobUrl,         // ← new
         analysisResult: doc.analysisResult,
         gptResponse: {
           tokens: gptResponse.tokens,
@@ -103,10 +104,8 @@ exports.uploadDocument = async (req, res) => {
       },
     });
   } catch (err) {
-   
-    return res
-      .status(500)
-      .json({ success: false, error: err.message || "Upload failed" });
+    console.error("Upload error:", err);
+    return res.status(500).json({ success: false, error: err.message || "Upload failed" });
   }
 };
 
@@ -251,10 +250,7 @@ exports.getDocuments = async (req, res) => {
         ],
       };
     } else {
-      return res.status(403).json({
-        success: false,
-        error: "Forbidden — insufficient role",
-      });
+      return res.status(403).json({ success: false, error: "Forbidden — insufficient role" });
     }
 
     const docs = await Document.aggregate([
@@ -275,35 +271,45 @@ exports.getDocuments = async (req, res) => {
           as: "reviewedBy",
         },
       },
-      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$userId",    preserveNullAndEmptyArrays: true } },
       { $unwind: { path: "$reviewedBy", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 1,
-          userId: { _id: 1, name: 1, email: 1, role: 1 },
+          userId:       { _id: 1, name: 1, email: 1, role: 1 },
           originalName: 1,
-          fileType: 1,
-          fileSize: 1,
-          wordCount: 1,
-          pageCount: 1,
-          status: 1,
-          isSubmitted: 1,
-          submittedAt: 1,
-          reviewedAt: 1,
-          reviewedBy: { _id: 1, name: 1, email: 1, role: 1 },
-          reviewNote: 1,
+          fileType:     1,
+          fileSize:     1,
+          wordCount:    1,
+          pageCount:    1,
+          status:       1,
+          isSubmitted:  1,
+          submittedAt:  1,
+          reviewedAt:   1,
+          reviewedBy:   { _id: 1, name: 1, email: 1, role: 1 },
+          reviewNote:   1,
           analysisResult: 1,
-          createdAt: 1,
-          updatedAt: 1,
+          blobFileName: 1,   // ← needed to generate SAS URL
+          createdAt:    1,
+          updatedAt:    1,
         },
       },
       { $sort: { createdAt: -1 } },
     ]);
 
+    // ── Attach a fresh SAS URL to every doc that has a stored file ────────────
+    const docsWithUrl = docs.map((doc) => {
+      const { blobFileName, ...rest } = doc;
+      return {
+        ...rest,
+        fileUrl: blobFileName ? generateSasUrl(blobFileName) : null,
+      };
+    });
+
     return res.status(200).json({
       success: true,
-      count: docs.length,
-      data: docs,
+      count: docsWithUrl.length,
+      data: docsWithUrl,
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -330,37 +336,43 @@ exports.getDocumentById = async (req, res) => {
           as: "reviewedBy",
         },
       },
-      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$userId",    preserveNullAndEmptyArrays: true } },
       { $unwind: { path: "$reviewedBy", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 1,
-          userId: { _id: 1, name: 1, email: 1, role: 1 },
+          userId:       { _id: 1, name: 1, email: 1, role: 1 },
           originalName: 1,
-          fileType: 1,
-          fileSize: 1,
-          wordCount: 1,
-          pageCount: 1,
-          status: 1,
-          isSubmitted: 1,
-          submittedAt: 1,
-          reviewedAt: 1,
-          reviewedBy: { _id: 1, name: 1, email: 1, role: 1 },
-          reviewNote: 1,
+          fileType:     1,
+          fileSize:     1,
+          wordCount:    1,
+          pageCount:    1,
+          status:       1,
+          isSubmitted:  1,
+          submittedAt:  1,
+          reviewedAt:   1,
+          reviewedBy:   { _id: 1, name: 1, email: 1, role: 1 },
+          reviewNote:   1,
           analysisResult: 1,
-          createdAt: 1,
-          updatedAt: 1,
+          blobFileName: 1,   // ← needed to generate SAS URL
+          createdAt:    1,
+          updatedAt:    1,
         },
       },
     ]);
 
     if (!docs.length) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Document not found" });
+      return res.status(404).json({ success: false, error: "Document not found" });
     }
 
-    return res.status(200).json({ success: true, data: docs[0] });
+    // ── Attach a fresh SAS URL ────────────────────────────────────────────────
+    const { blobFileName, ...rest } = docs[0];
+    const doc = {
+      ...rest,
+      fileUrl: blobFileName ? generateSasUrl(blobFileName) : null,
+    };
+
+    return res.status(200).json({ success: true, data: doc });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -369,38 +381,33 @@ exports.getDocumentById = async (req, res) => {
 exports.deleteDocument = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
-    if (!doc)
-      return res
-        .status(404)
-        .json({ success: false, error: "Document not found" });
+    if (!doc) return res.status(404).json({ success: false, error: "Document not found" });
+
+     if (doc.blobFileName) {
+      await deleteFromAzureBlob(doc.blobFileName);
+    }
 
     doc.status = "deleted";
     doc.deletedAt = new Date();
     await doc.save();
 
-    const staffUsers = await User.find(
-      { role: { $in: ['reviewer', 'admin'] } },
-      '_id'
-    );
-
-    const analystName = req.user.name || req.user.email || 'An analyst';
+    const staffUsers = await User.find({ role: { $in: ["reviewer", "admin"] } }, "_id");
+    const analystName = req.user.name || req.user.email || "An analyst";
 
     staffUsers.forEach((staffUser) => {
       sendNotification(staffUser._id, {
-        type: 'DOCUMENT_DELETED',
+        type: "DOCUMENT_DELETED",
         documentName: doc.originalName,
         message: `${analystName} deleted "${doc.originalName}".`,
-      })
-    })
-
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Document deleted successfully",
-        status: doc.status,
       });
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Document deleted successfully",
+      status: doc.status,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
