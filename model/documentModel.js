@@ -1,576 +1,472 @@
-// const mongoose = require("mongoose");
-
-// const DocumentSchema = new mongoose.Schema(
-//   {
-//      userId: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       required: true,
-//       index: true,
-//     },
-
-//      originalName: { type: String, required: true },
-//     fileType: {
-//       type: String,
-//       enum: ["pdf", "txt", "docx", "other"],
-//       default: "other",
-//     },
-//     fileSize:      { type: Number },
-//     extractedText: { type: String, default: "" },
-//     wordCount:     { type: Number, default: 0 },
-//     pageCount:     { type: Number, default: 1 },
-
-//     status: {
-//       type: String,
-//       enum: [
-//         "uploaded",
-//         "processing",
-//         "analyzed",
-//         "failed",
-//         "deleted",  
-//         "pending_review",
-//         "changes_requested",
-//         "approved",
-//         "rejected",
-//       ],
-//       default: "uploaded",
-//       index: true,
-//     },
-
-//     customPrompt: { type: String, default: null },
-//     deletedAt: { type: Date, default: null },
-//      submittedAt: { type: Date, default: null },
-
-//      reviewedAt: { type: Date, default: null },
-//     reviewedBy: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       default: null,
-//     },
-//     reviewNote: { type: String, default: null },
-//      analysisResult: {
-//       documentType:        { type: String, default: "Unknown" },
-//       completenessScore:   { type: Number, default: 0 },
-//       plainEnglishSummary: { type: String, default: "" },
-//       documentOverview: {
-//         documentType: String,
-//         madeBy:       String,
-//         madeFor:      String,
-//         purpose:      String,
-//       },
-//       fieldByFieldExplanation: [
-//         {
-//           fieldName:           String,
-//           value:               String,
-//           plainEnglishMeaning: String,
-//           plainEnglishValue:   String,
-//         },
-//       ],
-//       technicalTermsExplained: [
-//         {
-//           term:              String,
-//           simpleExplanation: String,
-//         },
-//       ],
-//       unusualObservations: {
-//         hasUnusualValues: { type: Boolean, default: false },
-//         observations:     [String],
-//         missingFields:    [String],
-//       },
-//     },
-
-//      gptResponse: {
-//       rawMessage:   String,
-//       structured:   mongoose.Schema.Types.Mixed,
-//       model:        String,
-//       tokens: {
-//         prompt:     Number,
-//         completion: Number,
-//         total:      Number,
-//       },
-//       finishReason: String,
-//     },
-//   },
-//   { timestamps: true }
-// );
-
-// module.exports = mongoose.model("Document", DocumentSchema);
-
-// const mongoose = require("mongoose");
-
-// const DocumentSchema = new mongoose.Schema(
-//   {
-//     userId: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       required: true,
-//       index: true,
-//     },
-
-//     originalName: { type: String, required: true },
-//     fileType: {
-//       type: String,
-//       enum: ["pdf", "txt", "docx", "other"],
-//       default: "other",
-//     },
-//     fileSize:      { type: Number },
-//     extractedText: { type: String, default: "" },
-//     wordCount:     { type: Number, default: 0 },
-//     pageCount:     { type: Number, default: 1 },
-
-//     status: {
-//       type: String,
-//       enum: [
-//         "uploaded",
-//         "processing",
-//         "analyzed",
-//         "failed",
-//         "deleted",
-//         "pending_review",
-//         "changes_requested",
-//         "approved",
-//         "rejected",
-//       ],
-//       default: "uploaded",
-//       index: true,
-//     },
-
-//     customPrompt: { type: String, default: null },
-//     deletedAt:    { type: Date, default: null },
-//     submittedAt:  { type: Date, default: null },
-//     reviewedAt:   { type: Date, default: null },
-//     reviewedBy: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       default: null,
-//     },
-//     reviewNote: { type: String, default: null },
-
-//     // ─── ANALYSIS RESULT ─────────────────────────────────────────────
-//     analysisResult: {
-
-//       // Existing fields (unchanged)
-//       documentType:        { type: String, default: "Unknown" },
-//       completenessScore:   { type: Number, default: 0 },
-//       plainEnglishSummary: { type: String, default: "" },
-
-//       documentOverview: {
-//         documentType:    String,
-//         madeBy:          String,
-//         madeFor:         String,
-//         purpose:         String,
-//         sourceReference: String,   // ← NEW
-//       },
-
-//       // Existing + NEW passOrFail & sourceLocation per field
-//       fieldByFieldExplanation: [
-//         {
-//           fieldName:           String,
-//           value:               String,
-//           plainEnglishMeaning: String,
-//           plainEnglishValue:   String,
-//           passOrFail:          String,   // ← NEW  "PASS" | "FAIL" | "N/A"
-//           sourceLocation:      String,   // ← NEW
-//         },
-//       ],
-
-//       // Existing + NEW sourceLocation per term
-//       technicalTermsExplained: [
-//         {
-//           term:              String,
-//           simpleExplanation: String,
-//           sourceLocation:    String,   // ← NEW
-//         },
-//       ],
-
-//       // Existing (unchanged)
-//       unusualObservations: {
-//         hasUnusualValues: { type: Boolean, default: false },
-//         observations:     [String],
-//         missingFields:    [String],
-//       },
-
-//       // ── NEW: Anonymised Data (Privacy Layer - Point 4) ──────────────
-//       anonymisedData: {
-//         sensitiveFieldsDetected: [
-//           {
-//             fieldName:            String,
-//             originalValueMasked:  String,
-//             sensitivityType:      String,
-//             sourceLocation:       String,
-//           },
-//         ],
-//         anonymisedDocumentSummary: { type: String, default: "" },
-//       },
-
-//       // ── NEW: Smart Summary (Point 5) ────────────────────────────────
-//       smartSummary: {
-//         objective:   { type: String, default: "" },
-//         keyFindings: [String],
-//         riskPoints:  [String],
-//         actionItems: [String],
-//       },
-
-//       // ── NEW: Validation Report (Point 6) ────────────────────────────
-//       validationReport: {
-//         allRequiredFieldsPresent: { type: Boolean, default: true },
-//         missingFields:            [String],
-//         inconsistencies:          [String],
-//         warnings:                 [String],
-//         errorList:                [String],
-//       },
-
-//       // ── NEW: Classification & Priority (Point 8) ────────────────────
-//       classificationAndPriority: {
-//         category:            { type: String, default: "Routine" },
-//         priorityLevel: {
-//           type:    String,
-//           enum:    ["High", "Medium", "Low"],
-//           default: "Low",
-//           index:   true,
-//         },
-//         priorityReason:      { type: String, default: "" },
-//         recommendedAction: {
-//           type:    String,
-//           enum:    ["Approve", "Reject", "Flag for Review", "Re-test", "Escalate", "Archive"],
-//           default: "Approve",
-//         },
-//       },
-
-//       // ── NEW: Document Comparison (Point 7) ──────────────────────────
-//       documentComparison: {
-//         isComparisonAvailable: { type: Boolean, default: false },
-//         comparedWithDocumentId: {
-//           type: mongoose.Schema.Types.ObjectId,
-//           ref:  "Document",
-//           default: null,
-//         },
-//         changes: [
-//           {
-//             fieldName:    String,
-//             oldValue:     String,
-//             newValue:     String,
-//             changeType:   String,  // "dosage" | "value" | "section" | "other"
-//           },
-//         ],
-//       },
-
-//       // ── NEW: Sources Cited ───────────────────────────────────────────
-//       sourcesCited: [
-//         {
-//           dataPoint:      String,
-//           sourceLocation: String,
-//           extractedValue: String,
-//         },
-//       ],
-//     },
-
-//      gptResponse: {
-//       rawMessage:   String,
-//       structured:   mongoose.Schema.Types.Mixed,
-//       model:        String,
-//       tokens: {
-//         prompt:     Number,
-//         completion: Number,
-//         total:      Number,
-//       },
-//       finishReason: String,
-//     },
-//   },
-//   { timestamps: true }
-// );
-
-// module.exports = mongoose.model("Document", DocumentSchema);
-
 const mongoose = require("mongoose");
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SUB-SCHEMAS (for clarity and reuse)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const FieldExplanationSchema = new mongoose.Schema(
+const PeakSchema = new mongoose.Schema(
   {
-    fieldName:           { type: String },   // Exact label from document
-    value:               { type: String },   // Exact value from document
-    specification:       { type: String },   // Acceptable range/spec stated in doc
-    plainEnglishMeaning: { type: String },   // What the field name means simply
-    plainEnglishValue:   { type: String },   // What the value means simply
-    passOrFail:          { type: String, enum: ["PASS", "FAIL", "N/A"], default: "N/A" },
-    sourceLocation:      { type: String },   // e.g. "Page 1, Test Table, Row 6"
+    srNo: { type: Number, default: 0 },
+    retentionTime: { type: Number, default: 0 },
+    area: { type: Number, default: 0 },
+    areaPercent: { type: Number, default: 0 },
+    symmetry: { type: Number, default: null },
   },
-  { _id: true }
+  { _id: false },
 );
 
-const TechnicalTermSchema = new mongoose.Schema(
+const SupportingDataSchema = new mongoose.Schema(
   {
-    term:              { type: String },
-    simpleExplanation: { type: String },
-    sourceLocation:    { type: String },
+    dataType: { type: String, default: "" },
+    sampleName: { type: String, default: "" },
+    operator: { type: String, default: "" },
+    injectionDate: { type: String, default: "" },
+    runTime: { type: String, default: "" },
+    method: { type: String, default: "" },
+    peaks: { type: [PeakSchema], default: [] },
   },
-  { _id: true }
+  { _id: false },
 );
 
-const SensitiveFieldSchema = new mongoose.Schema(
+const FieldSchema = new mongoose.Schema(
   {
-    fieldName:           { type: String },
-    originalValueMasked: { type: String },   // e.g. "PP****" or "[REDACTED]"
-    sensitivityType: {
+    fieldName: { type: String, default: "" },
+    value: { type: String, default: "" },
+    unit: { type: String, default: null },
+    specification: { type: String, default: null },
+    passOrFail: {
       type: String,
       enum: [
-        "Name",
-        "Batch ID",
-        "Report ID",
-        "Patient ID",
-        "Address",
-        "Chemical Identifier",
-        "Signature",
-        "Other",
+        "PASS",
+        "FAIL",
+        "WARNING",
+        "CRITICAL_WARNING",
+        "NOT_DETECTED",
+        "N/A",
+        "INFO",
       ],
+      default: "N/A",
     },
-    sourceLocation: { type: String },
+    percentageOfLimit: { type: String, default: "N/A" },
+    plainEnglishMeaning: { type: String, default: "" }, // ← NEW
+    plainEnglishValue: { type: String, default: "" }, // ← NEW
+    sourceLocation: { type: String, default: "" },
+    sourceUrl: { type: String, default: null }, // ← NEW — live URL
+    riskFlag: { type: Boolean, default: false },
+    isCritical: { type: Boolean, default: false },
   },
-  { _id: true }
+  { _id: true },
 );
 
-const DocumentChangeSchema = new mongoose.Schema(
+const TestResultSchema = new mongoose.Schema(
   {
-    fieldName:  { type: String },
-    oldValue:   { type: String },
-    newValue:   { type: String },
-    changeType: {
+    srNo: { type: String, default: "" },
+    parameterName: { type: String, default: "" },
+    specification: { type: String, default: null },
+    result: { type: String, default: "" },
+    unit: { type: String, default: null },
+    status: {
       type: String,
-      enum: ["dosage", "value", "section", "date", "other"],
-      default: "other",
+      enum: [
+        "PASS",
+        "FAIL",
+        "WARNING",
+        "CRITICAL_WARNING",
+        "NOT_DETECTED",
+        "INFO",
+        "N/A",
+      ],
+      default: "N/A",
+    },
+    percentageOfLimit: { type: String, default: "N/A" },
+    plainEnglishTest: { type: String, default: "" },
+    plainEnglishResult: { type: String, default: "" },
+    isSeriousConcern: { type: Boolean, default: false },
+    sourceLocation: { type: String, default: "" },
+    sourceUrl: { type: String, default: null }, // ← NEW
+  },
+  { _id: false },
+);
+
+const SignatureSchema = new mongoose.Schema(
+  {
+    preparedBy: { type: String, default: null },
+    checkedBy: { type: String, default: null },
+    reviewedBy: { type: String, default: null },
+    approvedBy: { type: String, default: null },
+    signedDate: { type: String, default: null },
+  },
+  { _id: false },
+);
+
+const ValidationSchema = new mongoose.Schema(
+  {
+    completenessScore: { type: Number, default: 0 },
+    allChecksPassed: { type: Boolean, default: true },
+    overallVerdict: {
+      type: String,
+      enum: [
+        "COMPLIES",
+        "DOES_NOT_COMPLY",
+        "INCOMPLETE",
+        "REQUIRES_REVIEW",
+        "PASS",
+        "FAIL",
+        "PASS_WITH_OBSERVATIONS",
+        "PARTIAL",
+        "UNREADABLE",
+      ],
+      default: "COMPLIES",
+    },
+    verdictReason: { type: String, default: "" },
+    failedItems: { type: [String], default: [] },
+    warnings: { type: [String], default: [] },
+    criticalErrors: { type: [String], default: [] },
+  },
+  { _id: false },
+);
+
+const AlertSchema = new mongoose.Schema(
+  {
+    alertLevel: {
+      type: String,
+      enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      default: "LOW",
+    },
+    alertTitle: { type: String, default: "" },
+    alertDetail: { type: String, default: "" },
+    affectedField: { type: String, default: "" },
+    recommendedAction: { type: String, default: "" },
+    sourceUrl: { type: String, default: null }, // ← NEW
+  },
+  { _id: false },
+);
+
+const RegulatoryRefSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: "" },
+    relevance: { type: String, default: "" },
+    url: { type: String, default: null }, // ← live URL
+  },
+  { _id: false },
+);
+
+const SingleDocumentSchema = new mongoose.Schema(
+  {
+    docIndex: { type: Number, required: true },
+    casNumber: { type: String, default: null },
+    batchSize: { type: String, default: null },
+    mfgDate: { type: String, default: null },
+    retestDate: { type: String, default: null },
+    mfgLicNo: { type: String, default: null },
+    documentType: { type: String, default: "OTHER" },
+    documentTitle: { type: String, default: "" },
+    issuedBy: { type: String, default: "" },
+    issuedTo: { type: String, default: "" },
+    documentDate: { type: String, default: "" },
+    documentId: { type: String, default: "" },
+    pageRange: { type: String, default: "" },
+    conclusion: { type: String, default: "" },
+    storageCondition: { type: String, default: "" },
+    remarks: { type: String, default: "" },
+    fields: { type: [FieldSchema], default: [] },
+    testResults: { type: [TestResultSchema], default: [] },
+    supportingData: { type: [SupportingDataSchema], default: [] },
+    signatures: { type: SignatureSchema, default: () => ({}) },
+    validation: { type: ValidationSchema, default: () => ({}) },
+    sensitiveData: [
+      {
+        fieldName: { type: String, default: "" },
+        maskedValue: { type: String, default: "" },
+        sensitivityType: { type: String, default: "" },
+        sourceLocation: { type: String, default: "" },
+        _id: false,
+      },
+    ],
+    chunkIndices: { type: [Number], default: [] },
+    keyRegulatoryReferences: { type: [RegulatoryRefSchema], default: [] },
+  },
+  { _id: true },
+);
+
+const ComparisonResultSchema = new mongoose.Schema(
+  {
+    docIndex: { type: Number },
+    documentId: { type: String, default: "" },
+    value: { type: String, default: "" },
+    passOrFail: { type: String, default: "N/A" },
+  },
+  { _id: false },
+);
+
+const FieldComparisonSchema = new mongoose.Schema(
+  {
+    fieldName: { type: String, default: "" },
+    specification: { type: String, default: "" },
+    specConsistent: { type: Boolean, default: true },
+    results: { type: [ComparisonResultSchema], default: [] },
+    trend: {
+      type: String,
+      enum: ["STABLE", "IMPROVING", "DEGRADING", "VARIABLE", "N/A"],
+      default: "N/A",
+    },
+    varianceFlag: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
+const EntitySummarySchema = new mongoose.Schema(
+  {
+    docIndex: { type: Number },
+    documentId: { type: String, default: "" },
+    date: { type: String, default: "" },
+    overallVerdict: { type: String, default: "" },
+    completenessScore: { type: Number, default: 0 },
+    failCount: { type: Number, default: 0 },
+    warnCount: { type: Number, default: 0 },
+    criticalCount: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
+const RiskItemSchema = new mongoose.Schema(
+  {
+    riskId: { type: String, default: "" },
+    severity: {
+      type: String,
+      enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      default: "LOW",
+    },
+    category: {
+      type: String,
+      enum: [
+        "Quality",
+        "Regulatory",
+        "Safety",
+        "Commercial",
+        "Data Integrity",
+        "Completeness",
+      ],
+      default: "Quality",
+    },
+    description: { type: String, default: "" },
+    affectedDocuments: { type: [Number], default: [] },
+    affectedFields: { type: [String], default: [] },
+    sourceLocation: { type: String, default: "" },
+    recommendation: { type: String, default: "" },
+    sourceUrl: { type: String, default: null },
+  },
+  { _id: true },
+);
+
+const SourceCitationSchema = new mongoose.Schema(
+  {
+    citationId: { type: String, default: "" },
+    dataPoint: { type: String, default: "" },
+    docIndex: { type: Number, default: 1 },
+    pageNumber: { type: String, default: "" },
+    sectionName: { type: String, default: "" },
+    rowOrPosition: { type: String, default: "" },
+    extractedValue: { type: String, default: "" },
+    sourceUrl: { type: String, default: null },
+  },
+  { _id: false },
+);
+
+const GlossaryTermSchema = new mongoose.Schema(
+  {
+    term: { type: String, default: "" },
+    simpleExplanation: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
+const AnalysisResultSchema = new mongoose.Schema(
+  {
+    documentSetType: {
+      type: String,
+      enum: ["SINGLE", "MULTI"],
+      default: "SINGLE",
+    },
+    documentCount: { type: Number, default: 1 },
+    documentType: {
+      type: String,
+      enum: [
+        "COA",
+        "INVOICE",
+        "LEGAL_CONTRACT",
+        "MEDICAL_RECORD",
+        "LAB_REPORT",
+        "FINANCIAL",
+        "MIXED",
+        "OTHER",
+        "SAE_REPORT",
+        "REGULATORY",
+      ],
+      default: "OTHER",
+    },
+    completenessScore: { type: Number, default: 0, min: 0, max: 100 },
+    totalPages: { type: Number, default: 1 },
+    totalChunksProcessed: { type: Number, default: 0 },
+
+    documentOverview: {
+      documentType: { type: String, default: "" },
+      madeBy: { type: String, default: "" },
+      madeFor: { type: String, default: "" },
+      purpose: { type: String, default: "" },
+      coversPeriod: { type: String, default: "" },
+      uniqueProducts: { type: [String], default: [] },
+      uniqueBatches: { type: [String], default: [] },
+      jurisdiction: { type: String, default: "" },
+    },
+
+    documents: { type: [SingleDocumentSchema], default: [] },
+
+    comparison: {
+      isAvailable: { type: Boolean, default: false },
+      entitySummaryTable: { type: [EntitySummarySchema], default: [] },
+      fieldComparison: { type: [FieldComparisonSchema], default: [] },
+      crossDocumentInsights: { type: [String], default: [] },
+    },
+
+    riskAnalysis: {
+      overallRiskLevel: {
+        type: String,
+        enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        default: "LOW",
+      },
+      riskItems: { type: [RiskItemSchema], default: [] },
+    },
+
+    sourceCitations: { type: [SourceCitationSchema], default: [] },
+
+    smartSummary: {
+      objective: { type: String, default: "" },
+      scope: { type: String, default: "" },
+      keyFindings: { type: [String], default: [] },
+      riskSummary: { type: String, default: "" },
+      actionItems: { type: [String], default: [] },
+      overallConclusion: { type: String, default: "" },
+      plainEnglishSummary: { type: String, default: "" },
+      technicalGlossary: { type: [GlossaryTermSchema], default: [] },
+    },
+
+    keyRegulatoryReferences: { type: [RegulatoryRefSchema], default: [] },
+
+    classificationAndPriority: {
+      category: {
+        type: String,
+        enum: [
+          "Quality Failure",
+          "Routine Quality Check",
+          "Compliance Issue",
+          "Regulatory Submission",
+          "Adverse Event",
+          "Commercial",
+          "Other",
+        ],
+        default: "Routine Quality Check",
+      },
+      priorityLevel: {
+        type: String,
+        enum: ["High", "Medium", "Low"],
+        default: "Low",
+        index: true,
+      },
+      priorityReason: { type: String, default: "" },
+      recommendedAction: {
+        type: String,
+        enum: [
+          "Approve",
+          "Reject",
+          "Flag for Review",
+          "Re-test Required",
+          "Escalate to Senior Reviewer",
+          "Archive",
+        ],
+        default: "Approve",
+      },
+    },
+
+    plainEnglishSummary: { type: String, default: "" },
+    documentRisk: {
+      type: String,
+      enum: ["HIGH", "MEDIUM", "LOW"],
+      default: "LOW",
+    },
+    unusualObservations: {
+      hasUnusualValues: { type: Boolean, default: false },
+      observations: { type: [String], default: [] },
+      missingFields: { type: [String], default: [] },
+    },
+    validationReport: {
+      completenessScore: { type: Number, default: 0 },
+      allRequiredFieldsPresent: { type: Boolean, default: true },
+      missingFields: { type: [String], default: [] },
+      inconsistencies: { type: [String], default: [] },
+      warnings: { type: [String], default: [] },
+      errorList: { type: [String], default: [] },
     },
   },
-  { _id: true }
+  { _id: false },
 );
-
-const SourceCitedSchema = new mongoose.Schema(
-  {
-    dataPoint:      { type: String },   // Field name or finding
-    sourceLocation: { type: String },   // Page, section, row, column
-    extractedValue: { type: String },   // Exact value pulled from that location
-  },
-  { _id: true }
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN DOCUMENT SCHEMA
-// ─────────────────────────────────────────────────────────────────────────────
 
 const DocumentSchema = new mongoose.Schema(
   {
-    // ── Identity ────────────────────────────────────────────────────────────
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true,
     },
-
-    // ── File Metadata ────────────────────────────────────────────────────────
     originalName: { type: String, required: true },
     fileType: {
       type: String,
       enum: ["pdf", "txt", "docx", "jpeg", "jpg", "png", "other"],
       default: "other",
     },
-    fileSize:      { type: Number },                  // bytes
-    extractedText: { type: String, default: "" },     // raw OCR / parsed text
-    wordCount:     { type: Number, default: 0 },
-    pageCount:     { type: Number, default: 1 },
-
-    // ── Workflow Status ──────────────────────────────────────────────────────
+    fileSize: { type: Number },
+    extractedText: { type: String, default: "" },
+    wordCount: { type: Number, default: 0 },
+    pageCount: { type: Number, default: 1 },
     status: {
       type: String,
       enum: [
-        "uploaded",          // file saved, not yet processed
-        "processing",        // AI analysis running
-        "analyzed",          // AI analysis complete
-        "failed",            // processing error
-        "deleted",           // soft-deleted
-        "pending_review",    // submitted for human review
-        "changes_requested", // reviewer sent back with notes
-        "approved",          // reviewer approved
-        "rejected",          // reviewer rejected
+        "uploaded",
+        "processing",
+        "analyzed",
+        "failed",
+        "deleted",
+        "pending_review",
+        "changes_requested",
+        "approved",
+        "rejected",
       ],
       default: "uploaded",
       index: true,
     },
-
-    // ── Prompt & Soft-delete ─────────────────────────────────────────────────
     customPrompt: { type: String, default: null },
-    deletedAt:    { type: Date,   default: null },
-    submittedAt:  { type: Date,   default: null },
-
-    // ── Review Fields ────────────────────────────────────────────────────────
+    deletedAt: { type: Date, default: null },
+    submittedAt: { type: Date, default: null },
     reviewedAt: { type: Date, default: null },
-    blobUrl:      { type: String, default: null },
-    blobFileName: { type: String, default: null },
     reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
     reviewNote: { type: String, default: null },
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ANALYSIS RESULT  (populated after AI processing)
-    // ─────────────────────────────────────────────────────────────────────────
-    analysisResult: {
-
-      // ── Top-level quick-access fields (mirrors nested values for easy query) ─
-      documentType:        { type: String, default: "Unknown" },
-      completenessScore:   { type: Number, default: 0, min: 0, max: 100 },
-      plainEnglishSummary: { type: String, default: "" },
-
-      // ── 1. Document Overview ──────────────────────────────────────────────
-      documentOverview: {
-        documentType:    { type: String },   // "Certificate of Analysis", "Invoice" …
-        madeBy:          { type: String },   // issuing organisation
-        madeFor:         { type: String },   // recipient
-        purpose:         { type: String },   // one-line purpose
-        sourceReference: { type: String },   // "Page 1, Header section"
-      },
-
-      // ── 2. Field-by-Field Extraction ──────────────────────────────────────
-      fieldByFieldExplanation: [FieldExplanationSchema],
-
-      // ── 3. Technical Terms ────────────────────────────────────────────────
-      technicalTermsExplained: [TechnicalTermSchema],
-
-      // ── 4. Anonymised Data (Privacy Layer) ───────────────────────────────
-      anonymisedData: {
-        sensitiveFieldsDetected:   [SensitiveFieldSchema],
-        anonymisedDocumentSummary: { type: String, default: "" },
-      },
-
-      // ── 5. Smart Summary ─────────────────────────────────────────────────
-      smartSummary: {
-        objective:   { type: String, default: "" },
-        keyFindings: [{ type: String }],
-        riskPoints:  [{ type: String }],
-        actionItems: [{ type: String }],
-      },
-
-      // ── 6. Validation & Completeness ─────────────────────────────────────
-      validationReport: {
-        allRequiredFieldsPresent: { type: Boolean, default: true },
-        missingFields:            [{ type: String }],
-        inconsistencies:          [{ type: String }],
-        warnings:                 [{ type: String }],
-        errorList:                [{ type: String }],
-      },
-
-      // ── 6b. Unusual Observations (kept for backward compat + UI display) ──
-      unusualObservations: {
-        hasUnusualValues: { type: Boolean, default: false },
-        observations:     [{ type: String }],
-        missingFields:    [{ type: String }],  // mirrors validationReport.missingFields
-      },
-
-      // ── 7. Document Comparison ────────────────────────────────────────────
-      documentComparison: {
-        isComparisonAvailable: { type: Boolean, default: false },
-        comparedWithDocumentId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Document",
-          default: null,
-        },
-        changes: [DocumentChangeSchema],
-      },
-
-      // ── 8. Classification & Priority ─────────────────────────────────────
-      classificationAndPriority: {
-        category: {
-          type: String,
-          enum: [
-            "Death",
-            "Hospitalisation",
-            "Adverse Event",
-            "Quality Failure",
-            "Compliance Issue",
-            "Regulatory Submission",
-            "Routine Quality Check",
-            "Other",
-          ],
-          default: "Other",
-        },
-        priorityLevel: {
-          type: String,
-          enum: ["High", "Medium", "Low"],
-          default: "Low",
-          index: true,
-        },
-        priorityReason:    { type: String, default: "" },
-        recommendedAction: {
-          type: String,
-          enum: [
-            "Approve",
-            "Reject",
-            "Flag for Review",
-            "Re-test Required",
-            "Escalate to Senior Reviewer",
-            "Archive",
-          ],
-          default: "Approve",
-        },
-      },
-
-      // ── 9. Sources Cited (every field traced back to document location) ───
-      sourcesCited: [SourceCitedSchema],
-    },
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // RAW GPT / AI RESPONSE  (stored for audit + debugging)
-    // ─────────────────────────────────────────────────────────────────────────
+    blobUrl: { type: String, default: null },
+    blobFileName: { type: String, default: null },
+    analysisResult: { type: AnalysisResultSchema, default: () => ({}) },
     gptResponse: {
-      rawMessage:   { type: String },                        // full raw string from API
-      structured:   { type: mongoose.Schema.Types.Mixed },  // parsed JSON object
-      model:        { type: String },                        // e.g. "gpt-4o-2024-11-20"
-      tokens: {
-        prompt:     { type: Number },
-        completion: { type: Number },
-        total:      { type: Number },
-      },
-      finishReason: { type: String },                        // "stop" | "length" | etc.
+      rawMessage: { type: String },
+      structured: { type: mongoose.Schema.Types.Mixed },
+      model: { type: String },
+      tokens: { prompt: Number, completion: Number, total: Number },
+      finishReason: { type: String },
     },
   },
-  {
-    timestamps: true,   // adds createdAt + updatedAt automatically
-  }
+  { timestamps: true },
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INDEXES  (for dashboard queries, priority queues, audit filters)
-// ─────────────────────────────────────────────────────────────────────────────
-DocumentSchema.index({ userId: 1, status: 1 });
-DocumentSchema.index({ userId: 1, createdAt: -1 });
-DocumentSchema.index({ "analysisResult.classificationAndPriority.priorityLevel": 1, status: 1 });
+DocumentSchema.index({ userId: 1, status: 1, createdAt: -1 });
+DocumentSchema.index({ "analysisResult.documentRisk": 1, status: 1 });
 DocumentSchema.index({ deletedAt: 1 }, { sparse: true });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VIRTUAL — human-readable file size
-// ─────────────────────────────────────────────────────────────────────────────
-DocumentSchema.virtual("fileSizeFormatted").get(function () {
-  if (!this.fileSize) return "Unknown";
-  if (this.fileSize < 1024) return `${this.fileSize} B`;
-  if (this.fileSize < 1048576) return `${(this.fileSize / 1024).toFixed(1)} KB`;
-  return `${(this.fileSize / 1048576).toFixed(1)} MB`;
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VIRTUAL — quick pass/fail summary count
-// ─────────────────────────────────────────────────────────────────────────────
-DocumentSchema.virtual("passFailCount").get(function () {
-  const fields = this.analysisResult?.fieldByFieldExplanation || [];
-  return {
-    pass: fields.filter((f) => f.passOrFail === "PASS").length,
-    fail: fields.filter((f) => f.passOrFail === "FAIL").length,
-    na:   fields.filter((f) => f.passOrFail === "N/A").length,
-    total: fields.length,
-  };
-});
 
 module.exports = mongoose.model("Document", DocumentSchema);

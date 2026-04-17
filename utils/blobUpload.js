@@ -9,7 +9,6 @@ const {
 
 require("dotenv").config();
 
-// ── Validate required env vars at startup (after dotenv loads) ──────────────
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const AZURE_CONTAINER_NAME            = process.env.AZURE_CONTAINER_NAME;
 const AZURE_STORAGE_ACCOUNT_NAME      = process.env.AZURE_STORAGE_ACCOUNT_NAME;
@@ -20,7 +19,6 @@ if (!AZURE_CONTAINER_NAME)            throw new Error("Missing env: AZURE_CONTAI
 if (!AZURE_STORAGE_ACCOUNT_NAME)      throw new Error("Missing env: AZURE_STORAGE_ACCOUNT_NAME");
 if (!AZURE_STORAGE_ACCOUNT_KEY)       throw new Error("Missing env: AZURE_STORAGE_ACCOUNT_KEY");
 
-// ── Lazy singletons (created once, on first use) ────────────────────────────
 let _sharedKeyCredential = null;
 let _containerClient     = null;
 
@@ -44,7 +42,6 @@ function getContainerClient() {
   return _containerClient;
 }
 
-// ── Upload ───────────────────────────────────────────────────────────────────
 async function uploadToAzureBlob(file) {
   try {
     const { buffer: fileBuffer, originalname, mimetype, fieldname } = file;
@@ -56,8 +53,6 @@ async function uploadToAzureBlob(file) {
     await blockBlobClient.uploadData(fileBuffer, {
       blobHTTPHeaders: { blobContentType: mimetype },
     });
-
-console.log(`File uploaded successfully: ${uniqueFileName}`);
     return { url: blockBlobClient.url, uniqueFileName };
   } catch (error) {
     console.error("Azure Blob Upload Error:", error);
@@ -65,14 +60,13 @@ console.log(`File uploaded successfully: ${uniqueFileName}`);
   }
 }
 
-// ── Delete ───────────────────────────────────────────────────────────────────
 async function deleteFromAzureBlob(fileName) {
   try {
     const blobClient = getContainerClient().getBlobClient(fileName);
     const response   = await blobClient.deleteIfExists();
 
-    if (response.succeeded) {
-      console.log(`File deleted successfully: ${fileName}`);
+    if ( response.succeeded) {
+      console.log(`File deleted successfully`);
       return true;
     } else {
       console.log(`File not found or already deleted: ${fileName}`);
@@ -84,14 +78,13 @@ async function deleteFromAzureBlob(fileName) {
   }
 }
 
-// ── SAS URL ──────────────────────────────────────────────────────────────────
 function generateSasUrl(fileName) {
   const sasOptions = {
     containerName: AZURE_CONTAINER_NAME,
     blobName:      fileName,
     permissions:   BlobSASPermissions.parse("r"),
     startsOn:      new Date(),
-    expiresOn:     new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+    expiresOn:     new Date(Date.now() + 5 * 60 * 1000), 
   };
 
   const sasToken = generateBlobSASQueryParameters(

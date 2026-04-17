@@ -22,15 +22,13 @@ const uploadsWithImages = multer({
     const isValidMimeType = allowedMimeTypes.includes(file.mimetype);
 
     if (isValidExtension && isValidMimeType) {
-      console.log('File accepted:', file.originalname, file.mimetype);
       callback(null, true);
     } else {
-      console.log('Only PDF and image files (JPG, JPEG, PNG, GIF, WEBP) are supported!');
       callback(new Error('Only PDF and image files are supported!'));
     }
   },
   limits: {
-  fileSize: 1024 * 1024 * 1024 * 2 // 2 GB
+  fileSize: 1024 * 1024 * 1024 * 2 
   }
 });
 

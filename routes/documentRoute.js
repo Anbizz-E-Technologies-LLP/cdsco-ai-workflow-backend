@@ -10,4 +10,7 @@ router.get('/:id', documentController.getDocumentById)
 router.delete('/:id',  protect, documentController.deleteDocument)
 router.patch("/:id/submit",  protect,documentController.submitForApproval);
 router.patch("/:id/review",  protect, documentController.reviewDocument);
+router.post("/text" ,protect,  documentController.analyzeText)
+
+
 module.exports = router
