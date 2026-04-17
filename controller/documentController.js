@@ -538,6 +538,7 @@ exports.submitForApproval = async (req, res) => {
       sendNotification(u._id, {
         type: "DOCUMENT_SUBMITTED",
         documentName: doc.originalName,
+          documentId: doc._id.toString(),   
         message: `${name} submitted "${doc.originalName}" for review.`,
       }),
     );
@@ -581,6 +582,7 @@ exports.reviewDocument = async (req, res) => {
     sendNotification(doc.userId, {
       type: "DOCUMENT_REVIEWED",
       documentName: doc.originalName,
+      documentId: doc._id.toString(), 
       status: doc.status,
       message: `Your document "${doc.originalName}" has been ${doc.status}.`,
     });
@@ -606,16 +608,18 @@ exports.getDocuments = async (req, res) => {
     let mf = {};
     if (role === "analyst") {
       mf = { userId: new Types.ObjectId(uid) };
-    } else if (["reviewer", "admin"].includes(role)) {
-      mf = {
-        $or: [
-          { status: "pending_review" },
-          { status: "approved" },
-          { status: "rejected" },
-          { status: "deleted" },
-          { reviewedBy: new Types.ObjectId(uid) },
-        ],
-      };
+    } else if (role === "reviewer") {
+  mf = {
+    $or: [
+      { status: "pending_review" },
+      { status: "approved" },
+      { status: "rejected" },
+      { status: "deleted" },
+      { reviewedBy: new Types.ObjectId(uid) },
+    ],
+  };
+} else if (role === "admin") {
+  mf = {}; 
     } else {
       return res.status(403).json({ success: false, error: "Forbidden" });
     }
@@ -767,6 +771,7 @@ exports.deleteDocument = async (req, res) => {
       sendNotification(u._id, {
         type: "DOCUMENT_DELETED",
         documentName: doc.originalName,
+          documentId: doc._id.toString(),  
         message: `${name} deleted "${doc.originalName}".`,
       }),
     );
