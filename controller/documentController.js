@@ -519,41 +519,45 @@ exports.submitForApproval = async (req, res) => {
     if (doc.userId.toString() !== req.user._id.toString())
       return res.status(403).json({ success: false, error: "Forbidden" });
     if (!["analyzed", "changes_requested"].includes(doc.status))
-      return res
-        .status(409)
-        .json({
-          success: false,
-          error: `Cannot submit — status is "${doc.status}"`,
-        });
+      return res.status(409).json({
+        success: false,
+        error: `Cannot submit — status is "${doc.status}"`,
+      });
+
     doc.status = "pending_review";
     doc.submittedAt = new Date();
     doc.reviewNote = null;
     await doc.save();
+
     const staff = await User.find(
-      { role: { $in: ["reviewer", "admin"] } },
+      { 
+        role: { $in: ["reviewer", "admin"] },
+        status: true  
+      },
       "_id",
     );
+
     const name = req.user.name || req.user.email || "An analyst";
+    
     staff.forEach((u) =>
       sendNotification(u._id, {
         type: "DOCUMENT_SUBMITTED",
         documentName: doc.originalName,
-          documentId: doc._id.toString(),   
         message: `${name} submitted "${doc.originalName}" for review.`,
       }),
     );
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Submitted",
-        document: {
-          _id: doc._id,
-          status: doc.status,
-          submittedAt: doc.submittedAt,
-        },
-      });
+
+    return res.status(200).json({
+      success: true,
+      message: "Submitted",
+      document: {
+        _id: doc._id,
+        status: doc.status,
+        submittedAt: doc.submittedAt,
+      },
+    });
   } catch (err) {
+    console.error("Error in submitForApproval:", err); // ← Add logging
     return res.status(500).json({ success: false, error: err.message });
   }
 };
