@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const verifyAccessToken = (token) => {
-  const secret = process.env.JWT_SECRET;  // ✅ changed from ACCESS_TOKEN_SECRET → JWT_SECRET
+  const secret = process.env.JWT_SECRET;  
 
   if (!secret) throw new Error("JWT_SECRET is missing");
 
@@ -27,7 +27,7 @@ const generateVerificationToken = () => {
 const generateAccessToken = (user) =>
   jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET,   // ✅ already correct
+    process.env.JWT_SECRET,   
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 
@@ -49,12 +49,12 @@ const verifyToken = (req, res, next) => {
       return res.status(401).json({ success: false, message: "Malformed JWT token" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);  // ✅ changed from ACCESS_TOKEN_SECRET → JWT_SECRET
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); 
 
     req.user = decoded;
     next();
   } catch (err) {
-    console.error("JWT ERROR:", err.message);
+    
     return res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
 };

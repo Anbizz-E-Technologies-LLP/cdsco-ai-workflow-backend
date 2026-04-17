@@ -12,21 +12,17 @@ const initSocket = (httpServer) => {
   })
 
   io.on('connection', (socket) => {
-    console.log('🔌 Socket connected:', socket.id)
+    
 
     socket.on('register', (userId) => {
-      // ✅ null/undefined check
-      if (!userId) {
-        console.warn('⚠️ register event received but userId is null/undefined')
-        return
+       if (!userId) {
+         return
       }
       socket.join(userId.toString())
-      console.log(`✅ User ${userId} joined room`)
-    })
+     })
 
     socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected:', socket.id)
-    })
+     })
   })
 
   return io

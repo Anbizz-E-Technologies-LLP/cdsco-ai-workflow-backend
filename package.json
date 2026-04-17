@@ -14,23 +14,30 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
     "@azure/core-auth": "^1.10.1",
+    "@azure/storage-blob": "^12.31.0",
+    "@napi-rs/canvas": "^0.1.98",
     "bcryptjs": "^3.0.3",
+    "canvas": "^3.2.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.0",
+    "mongod": "^2.0.0",
     "mongoose": "^9.4.1",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.5",
     "nodemon": "^3.1.14",
-    "openai": "^6.33.0",
+    "openai": "^6.34.0",
     "parser": "^0.1.4",
     "pdf-parse": "^1.1.4",
     "pdf-poppler": "^0.2.3",
+    "pdf-to-png-converter": "^3.11.0",
     "pdf2pic": "^3.2.0",
+    "pdfjs-dist": "^5.6.205",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.3",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "uuid": "^13.0.0"
   }
 }

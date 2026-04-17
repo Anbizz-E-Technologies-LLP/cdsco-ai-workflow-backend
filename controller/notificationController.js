@@ -5,6 +5,6 @@ const { getIO } = require('../socket')
     const io = getIO()
     io.to(userId.toString()).emit('notification', payload)
    } catch (err) {
-    console.error('Socket notification error:', err.message)
+    
   }
 }

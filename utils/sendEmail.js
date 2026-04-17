@@ -76,7 +76,7 @@ const sendWelcomeEmail = async ({ name, email, role, tempPassword }) => {
                 <tr>
                   <td style="border-left:3px solid #f87171;background:#fff5f5;padding:12px 16px;border-radius:0 6px 6px 0;">
                     <p style="margin:0;font-size:13px;color:#b91c1c;line-height:1.6;">
-                      ⚠️ Please change your password immediately after your first login. Do not share your credentials with anyone.
+                      Please change your password immediately after your first login. Do not share your credentials with anyone.
                     </p>
                   </td>
                 </tr>
