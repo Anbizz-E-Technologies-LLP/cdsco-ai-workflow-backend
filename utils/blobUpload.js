@@ -55,8 +55,7 @@ async function uploadToAzureBlob(file) {
     });
     return { url: blockBlobClient.url, uniqueFileName };
   } catch (error) {
-    console.error("Azure Blob Upload Error:", error);
-    throw new Error("Failed to upload file to Azure");
+     throw new Error("Failed to upload file to Azure");
   }
 }
 
@@ -66,15 +65,12 @@ async function deleteFromAzureBlob(fileName) {
     const response   = await blobClient.deleteIfExists();
 
     if ( response.succeeded) {
-      console.log(`File deleted successfully`);
-      return true;
+       return true;
     } else {
-      console.log(`File not found or already deleted: ${fileName}`);
-      return false;
+       return false;
     }
   } catch (error) {
-    console.error("Error deleting file from Azure Blob Storage:", error.message);
-    return false;
+     return false;
   }
 }
 

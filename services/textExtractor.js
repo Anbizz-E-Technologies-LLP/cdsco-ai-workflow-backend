@@ -7,8 +7,7 @@ const { extractRawText } = require("./pdfExtractor");
     const rawText = (result.value || "").replace(/\n{3,}/g, "\n\n").trim();
     return { rawText, pageCount: 1, method: "mammoth-docx" };
   } catch (err) {
-    console.error("  DOCX extraction failed:", err.message);
-    return { rawText: "", pageCount: 1, method: "docx-failed" };
+     return { rawText: "", pageCount: 1, method: "docx-failed" };
   }
 }
 
@@ -38,8 +37,7 @@ const { extractRawText } = require("./pdfExtractor");
     const rawText = res.choices[0]?.message?.content?.trim() || "";
     return { rawText, pageCount: 1, method: "vision-image" };
   } catch (err) {
-    console.error("  Image Vision failed:", err.message);
-    return { rawText: "", pageCount: 1, method: "image-failed" };
+     return { rawText: "", pageCount: 1, method: "image-failed" };
   }
 }
 

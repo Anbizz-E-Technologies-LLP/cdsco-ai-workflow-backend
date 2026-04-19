@@ -276,19 +276,15 @@ exports.uploadDocument = async (req, res) => {
         try {
           const blob = await uploadToAzureBlob(file);
           blobUrl = blob.url; blobFileName = blob.uniqueFileName;
-          console.log(`☁️  Blob: ${blobFileName}`);
-        } catch (e) { console.warn("⚠️  Blob failed:", e.message); }
+         } catch (e) { console.warn("Blob failed:", e.message); }
 
         // Extract raw text (handles digital + scanned)
-        console.log(`\n📥 Processing: "${file.originalname}" | ${fileType}`);
-        const { rawText, pageCount, method } = await extractText(file.buffer, fileType, openaiClient);
-        console.log(`  Extracted: ${rawText.length} chars, ${pageCount} pages, method=${method}`);
-
+         const { rawText, pageCount, method } = await extractText(file.buffer, fileType, openaiClient);
+ 
         // Analyse: send raw TEXT to GPT-4o
         const gptResponse    = await analyzeDocument({ rawText, pageCount, fileType, originalName: file.originalname, customPrompt });
         const analysisResult = mapToAnalysisResult(gptResponse.structured);
-        console.log(`✅ "${file.originalname}" — risk=${analysisResult.riskAnalysis?.overallRiskLevel}, score=${analysisResult.completenessScore}%`);
-
+ 
         const doc = await Document.create({
           userId, originalName: file.originalname, fileType: dbFileType,
           fileSize: file.size,
@@ -308,8 +304,7 @@ exports.uploadDocument = async (req, res) => {
         });
 
       } catch (fileErr) {
-        console.error(`❌ ${file.originalname}:`, fileErr.message);
-        savedDocs.push({ originalName: file.originalname, error: fileErr.message, status:"failed" });
+         savedDocs.push({ originalName: file.originalname, error: fileErr.message, status:"failed" });
       }
     }
 
@@ -322,8 +317,7 @@ exports.uploadDocument = async (req, res) => {
       documents: files.length === 1 ? savedDocs[0] : savedDocs,
     });
   } catch (err) {
-    console.error("❌ Upload error:", err);
-    return res.status(500).json({ success:false, error: err.message || "Upload failed" });
+     return res.status(500).json({ success:false, error: err.message || "Upload failed" });
   }
 };
 

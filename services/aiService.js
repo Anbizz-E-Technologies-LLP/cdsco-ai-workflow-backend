@@ -152,8 +152,7 @@ function buildChunks(rawText) {
     }
   }
 
-  console.log(`📦 ${chunks.length} chunks from ${markers.length} pages (smart 2-page grouping)`);
-  return chunks;
+   return chunks;
 }
 
 // ─── Analyse one chunk with GPT-4o ───────────────────────────────────────────
@@ -203,16 +202,14 @@ async function analyseChunk(chunk, total, attempt = 1) {
     parsed._unifiedFields = unified;  // store for buildFinal
 
     const fc = unified.length;
-    console.log(`  ✅ chunk ${idx}/${total} (${label}) — ${res.usage?.total_tokens}t, ${fc} rows`);
-    return { idx, parsed, tokens: res.usage?.total_tokens || 0, ok: true };
+     return { idx, parsed, tokens: res.usage?.total_tokens || 0, ok: true };
 
   } catch (err) {
     if (attempt < MAX_RETRIES && (err.status === 429 || err.status >= 500)) {
       await sleep(attempt * 2000);
       return analyseChunk(chunk, total, attempt + 1);
     }
-    console.error(`  ❌ chunk ${idx}:`, err.message);
-    return { idx, parsed: fallback(idx, err.message), tokens: 0, ok: false };
+     return { idx, parsed: fallback(idx, err.message), tokens: 0, ok: false };
   }
 }
 
@@ -232,8 +229,7 @@ async function analyseChunk(chunk, total, attempt = 1) {
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker));
 
   const ok = results.filter(r => r.ok).length;
-  console.log(`📊 Pipeline: ${ok}/${chunks.length} OK, ${totalTokens} tokens`);
-  return { results, totalTokens };
+   return { results, totalTokens };
 }
 
  async function mergeChunks(chunkResults, totalPages) {
@@ -344,8 +340,7 @@ async function analyseChunk(chunk, total, attempt = 1) {
     : '';
 
   const payload = JSON.stringify(summaries, null, 2);
-  console.log(`📦 Merge payload: ${payload.length} chars, batches from chunks: ${allBatchesForMerge.length}`);
-
+ 
   try {
     const res = await openaiClient.chat.completions.create({
       model:       process.env.AZURE_OPENAI_DEPLOYMENT,
@@ -362,14 +357,11 @@ async function analyseChunk(chunk, total, attempt = 1) {
 
     const merged = parseJSON(res.choices[0]?.message?.content?.trim() || "");
     if (!merged) {
-      console.warn("⚠️  Merge parse failed — using fallback");
-      return { merged: null, mt: res.usage?.total_tokens || 0 };
+       return { merged: null, mt: res.usage?.total_tokens || 0 };
     }
-    console.log(`✅ Merge done — ${res.usage?.total_tokens}t`);
-    return { merged, mt: res.usage?.total_tokens || 0 };
+     return { merged, mt: res.usage?.total_tokens || 0 };
   } catch (err) {
-    console.error("❌ Merge failed:", err.message);
-    return { merged: null, mt: 0 };
+     return { merged: null, mt: 0 };
   }
 }
 
@@ -694,8 +686,7 @@ async function analyseChunk(chunk, total, attempt = 1) {
     }));
   });
 
-  console.log(`📊 Multi-chunk fallback: ${allUnifiedFields.length} total rows from ${chunkResults.length} chunks`);
-
+ 
   return {
     documentSetType: "SINGLE", documentCount: 1, documentType: "COA",
     completenessScore: avgScore, totalPages, totalChunksProcessed: chunkResults.length,
@@ -746,17 +737,11 @@ async function analyseChunk(chunk, total, attempt = 1) {
     },
   };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN EXPORT
-// ─────────────────────────────────────────────────────────────────────────────
+ 
 async function analyzeDocument({ rawText, pageCount=1, fileType="pdf", originalName="document", customPrompt=null }) {
-  console.log(`\n${"─".repeat(60)}`);
-  console.log(`🤖 analyzeDocument: "${originalName}" | ${pageCount}p | ${rawText.length} chars`);
-
+  
   if (!rawText || rawText.replace(/\s/g,"").length < 20) {
-    console.error("  ❌ Raw text empty");
-    const r = { idx:1, parsed: fallback(1, "No text extracted"), tokens:0, ok:false };
+     const r = { idx:1, parsed: fallback(1, "No text extracted"), tokens:0, ok:false };
     return {
       rawMessage:   "No text",
       structured:   buildFinal([r], null, pageCount),
@@ -772,8 +757,7 @@ async function analyzeDocument({ rawText, pageCount=1, fileType="pdf", originalN
   const { merged, mt }               = chunks.length > 1 ? await mergeChunks(results, pageCount) : { merged:null, mt:0 };
 
   const okCount = results.filter(r=>r.ok).length;
-  console.log(`\n✅ Done — ${okCount}/${results.length} chunks OK, ${ct+mt} tokens total`);
-
+ 
   return {
     rawMessage:   `Analysed ${results.length} chunks`,
     structured:   buildFinal(results, merged, pageCount),
